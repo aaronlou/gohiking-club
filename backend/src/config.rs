@@ -1,0 +1,60 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppConfig {
+    pub server: ServerConfig,
+    pub database: DatabaseConfig,
+    pub storage: StorageConfig,
+    pub ai_scoring: AiScoringConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServerConfig {
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DatabaseConfig {
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StorageConfig {
+    pub bucket: String,
+    pub endpoint: String,
+    pub region: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AiScoringConfig {
+    pub active: String,
+    pub threshold: f64,
+    pub concurrent_limit: usize,
+    pub providers: HashMap<String, ProviderConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProviderConfig {
+    pub model: String,
+    pub max_tokens: Option<u32>,
+    pub endpoint: Option<String>,
+}
+
+impl AppConfig {
+    pub fn load() -> anyhow::Result<Self> {
+        dotenvy::dotenv().ok();
+
+        let mut builder = config::Config::builder()
+            .add_source(config::File::with_name("config/default"))
+            .add_source(config::Environment::default().prefix("APP").separator("__"));
+
+        // Inject DATABASE_URL from env if set
+        if let Ok(url) = std::env::var("DATABASE_URL") {
+            builder = builder.set_override("database.url", url)?;
+        }
+
+        Ok(builder.build()?.try_deserialize()?)
+    }
+}
