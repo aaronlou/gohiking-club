@@ -50,6 +50,7 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         config.storage.endpoint.clone(),
         config.storage.region.clone(),
         config.storage.bucket.clone(),
+        config.storage.public_endpoint.clone(),
     )
     .await?;
 

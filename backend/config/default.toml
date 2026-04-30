@@ -9,6 +9,7 @@ url = "postgres://postgres:postgres@localhost:5432/gohiking"
 bucket = "gohiking-photos"
 endpoint = "http://localhost:9000"  # MinIO for development
 region = "us-east-1"
+public_endpoint = "http://localhost:9000"  # Dev: same as endpoint
 
 [auth]
 jwt_secret = "change-me-in-production-use-a-long-random-string"

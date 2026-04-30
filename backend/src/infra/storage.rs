@@ -7,10 +7,13 @@ pub struct Storage {
     client: S3Client,
     bucket: String,
     endpoint: String,
+    public_endpoint: String,
 }
 
 impl Storage {
-    pub async fn new(endpoint: String, region: String, bucket: String) -> anyhow::Result<Self> {
+    pub async fn new(endpoint: String, region: String, bucket: String, public_endpoint: Option<String>) -> anyhow::Result<Self> {
+        let public_endpoint = public_endpoint.unwrap_or_else(|| endpoint.clone());
+
         let shared_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .endpoint_url(&endpoint)
             .region(Region::new(region))
@@ -33,6 +36,7 @@ impl Storage {
             client,
             bucket,
             endpoint,
+            public_endpoint,
         })
     }
 
@@ -67,6 +71,6 @@ impl Storage {
     }
 
     pub fn public_url(&self, key: &str) -> String {
-        format!("{}/{}/{}", self.endpoint, self.bucket, key)
+        format!("{}/{}/{}", self.public_endpoint, self.bucket, key)
     }
 }

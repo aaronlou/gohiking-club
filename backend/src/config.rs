@@ -32,6 +32,7 @@ pub struct StorageConfig {
     pub bucket: String,
     pub endpoint: String,
     pub region: String,
+    pub public_endpoint: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
