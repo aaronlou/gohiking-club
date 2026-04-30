@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
   MapPin,
@@ -7,15 +7,32 @@ import {
   ArrowLeft,
   Loader2,
   UserPlus,
+  LogIn,
 } from "lucide-react";
 import { useEvent, useEventPhotos, useJoinEvent } from "@/hooks/useEvents";
+import { useAuth } from "@/hooks/useAuth";
 import { PhotoGrid } from "@/components/PhotoGrid";
 
 export default function EventDetail() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { data: event, isLoading } = useEvent(id!);
   const { data: photos = [], isLoading: photosLoading } = useEventPhotos(id!);
   const joinMutation = useJoinEvent();
+
+  const handleJoin = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    joinMutation.mutate(event!.id, {
+      onError: () => {
+        // Token may have expired — redirect to login
+        navigate("/login");
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -117,12 +134,19 @@ export default function EventDetail() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
-              onClick={() => joinMutation.mutate(event.id)}
+              onClick={handleJoin}
               className="btn-primary"
               disabled={joinMutation.isPending}
             >
-              <UserPlus className="h-4 w-4" />
-              {joinMutation.isPending ? "加入中..." : "加入活动"}
+              {user ? (
+                <UserPlus className="h-4 w-4" />
+              ) : (
+                <LogIn className="h-4 w-4" />
+              )}
+              {user
+                ? joinMutation.isPending ? "加入中..." : "加入活动"
+                : "登录后加入"
+              }
             </button>
             <Link
               to={`/upload?event_id=${event.id}`}

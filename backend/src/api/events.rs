@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::api::auth_extractor::AuthenticatedUser;
 use crate::models::event::{CreateEventRequest, Event, EventResponse};
 use crate::models::photo::{Photo, PhotoResponse};
 use crate::AppState;
@@ -38,10 +39,11 @@ async fn get_counts(pool: &sqlx::PgPool, event_id: Uuid) -> (i64, i64) {
 }
 
 pub async fn create(
+    auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     Json(req): Json<CreateEventRequest>,
 ) -> Result<Json<EventResponse>, (StatusCode, String)> {
-    let user_id = Uuid::new_v4(); // TODO: extract from auth
+    let user_id = auth_user.id;
 
     if req.title.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Title is required".into()));
@@ -123,10 +125,11 @@ pub async fn get(
 }
 
 pub async fn join(
+    auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let user_id = Uuid::new_v4(); // TODO: extract from auth
+    let user_id = auth_user.id;
 
     let result = sqlx::query(
         "INSERT INTO event_members (event_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",

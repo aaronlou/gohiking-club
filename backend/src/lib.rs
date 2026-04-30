@@ -20,7 +20,9 @@ use crate::ai::registry::ScorerRegistry;
 use crate::ai::{claude::ClaudeScorer, ollama::OllamaScorer, openai::OpenAIScorer, PhotoScorer};
 use crate::config::AppConfig;
 use crate::infra::db;
-use crate::infra::storage::Storage;
+use crate::infra::storage::S3Storage;
+use crate::infra::storage_backend::StorageBackend;
+use crate::infra::veimagex::VeImageXStorage;
 use crate::services::auth_service::AuthService;
 use crate::services::photo_service::PhotoService;
 use crate::services::scoring_service::ScoringService;
@@ -45,14 +47,31 @@ impl AppState {
 pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
     let pool = db::init_pool(&config.database.url).await?;
 
-    // Initialize S3 storage
-    let storage = Storage::new(
-        config.storage.endpoint.clone(),
-        config.storage.region.clone(),
-        config.storage.bucket.clone(),
-        config.storage.public_endpoint.clone(),
-    )
-    .await?;
+    // Initialize storage backend
+    let storage: Arc<dyn StorageBackend> = match config.storage.backend.as_str() {
+        "veimagex" => {
+            let vc = config.storage.veimagex.clone().expect("veImageX config required when backend = \"veimagex\"");
+            Arc::new(VeImageXStorage::new(
+                vc.service_id,
+                vc.domain,
+                vc.access_key,
+                vc.secret_key,
+            ))
+        }
+        _ => {
+            // Default to S3 / MinIO
+            let s3 = config.storage.s3.clone().expect("S3 config required when backend = \"s3\"");
+            Arc::new(
+                S3Storage::new(
+                    s3.endpoint,
+                    s3.region,
+                    s3.bucket,
+                    s3.public_endpoint,
+                )
+                .await?,
+            )
+        }
+    };
 
     // Build AI scorer registry
     let providers = build_scorers(&config);

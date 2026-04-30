@@ -18,6 +18,8 @@ pub struct Photo {
     pub user_id: Uuid,
     pub url: String,
     pub thumbnail_url: Option<String>,
+    pub storage_key: Option<String>,
+    pub thumbnail_storage_key: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
     pub ai_score: f64,

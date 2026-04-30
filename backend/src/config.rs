@@ -29,10 +29,25 @@ pub struct DatabaseConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct StorageConfig {
+    pub backend: String,
+    pub s3: Option<S3Config>,
+    pub veimagex: Option<VeImageXConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct S3Config {
     pub bucket: String,
     pub endpoint: String,
     pub region: String,
     pub public_endpoint: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct VeImageXConfig {
+    pub service_id: String,
+    pub domain: String,
+    pub access_key: String,
+    pub secret_key: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

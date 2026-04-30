@@ -1,20 +1,22 @@
+use std::sync::Arc;
+
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::api::photos::PhotoFilter;
-use crate::infra::storage::Storage;
+use crate::infra::storage_backend::StorageBackend;
 use crate::models::photo::{Photo, PhotoResponse, PhotoStatus};
 use crate::models::user::{User, UserResponse};
 use crate::services::scoring_service::ScoringService;
 
 pub struct PhotoService {
     pool: PgPool,
-    storage: Storage,
+    storage: Arc<dyn StorageBackend>,
     scorer: ScoringService,
 }
 
 impl PhotoService {
-    pub fn new(pool: PgPool, storage: Storage, scorer: ScoringService) -> Self {
+    pub fn new(pool: PgPool, storage: Arc<dyn StorageBackend>, scorer: ScoringService) -> Self {
         Self { pool, storage, scorer }
     }
 
@@ -26,15 +28,13 @@ impl PhotoService {
         description: Option<String>,
         event_id: Option<Uuid>,
     ) -> anyhow::Result<PhotoResponse> {
-        // 1. Upload original to S3
-        let key = self.storage.upload(data.clone(), "image/jpeg", &format!("photos/{}", user_id)).await?;
-        let url = self.storage.public_url(&key);
+        // 1. Upload original
+        let storage_key = self.storage.upload(data.clone(), "image/jpeg", &format!("photos/{}", user_id)).await?;
+        let url = self.storage.public_url(&storage_key);
 
         // 2. Generate thumbnail (simple resize via image crate)
-        let thumbnail_key = format!("thumbnails/{}_{}", user_id, Uuid::new_v4());
-        let thumbnail_url = self.storage.public_url(&thumbnail_key);
-        // TODO: actual resize with image crate
-        self.storage.upload(data.clone(), "image/jpeg", &thumbnail_key).await?;
+        let thumb_storage_key = self.storage.upload(data.clone(), "image/jpeg", &format!("thumbnails/{}", user_id)).await?;
+        let thumbnail_url = self.storage.public_url(&thumb_storage_key);
 
         // 3. AI scoring
         let score_result = self.scorer.score(&data).await;
@@ -57,14 +57,16 @@ impl PhotoService {
         // 4. Save to database
         let photo = sqlx::query_as::<_, Photo>(
             r#"
-            INSERT INTO photos (user_id, url, thumbnail_url, title, description, ai_score, ai_feedback, status, event_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO photos (user_id, url, thumbnail_url, storage_key, thumbnail_storage_key, title, description, ai_score, ai_feedback, status, event_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *
             "#,
         )
         .bind(user_id)
         .bind(&url)
         .bind(&thumbnail_url)
+        .bind(&storage_key)
+        .bind(&thumb_storage_key)
         .bind(&title)
         .bind(&description)
         .bind(ai_score)
@@ -125,8 +127,11 @@ impl PhotoService {
             .await?
             .ok_or_else(|| anyhow::anyhow!("photo not found"))?;
 
-        // Delete from S3
-        if let Some(key) = photo.url.split('/').last() {
+        // Delete from storage
+        if let Some(key) = &photo.storage_key {
+            let _ = self.storage.delete(key).await;
+        }
+        if let Some(key) = &photo.thumbnail_storage_key {
             let _ = self.storage.delete(key).await;
         }
 

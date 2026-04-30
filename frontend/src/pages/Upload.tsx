@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { UploadZone } from "@/components/UploadZone";
 import { useUpload } from "@/hooks/useUpload";
 import { useEvents } from "@/hooks/useEvents";
+import { useAuth } from "@/hooks/useAuth";
 import { ScoreBadge, StatusBadge } from "@/components/ScoreBadge";
-import { CheckCircle, AlertCircle, Loader2, Upload as UploadIcon } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2, Upload as UploadIcon, LogIn } from "lucide-react";
 
 export default function UploadPage() {
+  const { user } = useAuth();
   const { state, upload, reset } = useUpload();
   const [searchParams] = useSearchParams();
   const preselectedEvent = searchParams.get("event_id");
@@ -16,6 +18,26 @@ export default function UploadPage() {
   const [eventId, setEventId] = useState(preselectedEvent ?? "");
 
   const { data: events = [] } = useEvents({ limit: 100 });
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg px-4 text-center py-16 sm:py-24">
+        <div className="mb-6 inline-flex h-24 w-24 items-center justify-center rounded-full bg-clay-100">
+          <LogIn className="h-12 w-12 text-clay-500" />
+        </div>
+        <h2 className="font-display text-2xl font-semibold text-clay-900 mb-2">
+          请先登录
+        </h2>
+        <p className="text-clay-500 mb-8">
+          登录后才能上传照片
+        </p>
+        <Link to="/login" className="btn-primary inline-flex items-center gap-2">
+          <LogIn className="h-4 w-4" />
+          去登录
+        </Link>
+      </div>
+    );
+  }
 
   const handleDrop = (files: File[]) => {
     const file = files[0];

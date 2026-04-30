@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, LogIn } from "lucide-react";
 import { useCreateEvent } from "@/hooks/useEvents";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CreateEvent() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const createMutation = useCreateEvent();
 
@@ -11,6 +13,26 @@ export default function CreateEvent() {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg px-4 text-center py-16 sm:py-24">
+        <div className="mb-6 inline-flex h-24 w-24 items-center justify-center rounded-full bg-clay-100">
+          <LogIn className="h-12 w-12 text-clay-500" />
+        </div>
+        <h2 className="font-display text-2xl font-semibold text-clay-900 mb-2">
+          请先登录
+        </h2>
+        <p className="text-clay-500 mb-8">
+          登录后才能创建活动
+        </p>
+        <Link to="/login" className="btn-primary inline-flex items-center gap-2">
+          <LogIn className="h-4 w-4" />
+          去登录
+        </Link>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

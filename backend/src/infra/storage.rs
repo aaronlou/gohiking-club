@@ -1,17 +1,24 @@
+use async_trait::async_trait;
 use aws_sdk_s3::config::Region;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::Client as S3Client;
 use uuid::Uuid;
 
-pub struct Storage {
+use super::storage_backend::StorageBackend;
+
+pub struct S3Storage {
     client: S3Client,
     bucket: String,
-    endpoint: String,
     public_endpoint: String,
 }
 
-impl Storage {
-    pub async fn new(endpoint: String, region: String, bucket: String, public_endpoint: Option<String>) -> anyhow::Result<Self> {
+impl S3Storage {
+    pub async fn new(
+        endpoint: String,
+        region: String,
+        bucket: String,
+        public_endpoint: Option<String>,
+    ) -> anyhow::Result<Self> {
         let public_endpoint = public_endpoint.unwrap_or_else(|| endpoint.clone());
 
         let shared_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
@@ -26,26 +33,19 @@ impl Storage {
 
         let client = S3Client::from_conf(s3_config);
 
-        // Ensure bucket exists (ignoring errors in dev)
+        // Ensure bucket exists
         match client.create_bucket().bucket(&bucket).send().await {
-            Ok(_) => tracing::info!("Created S3 bucket: {}", bucket),
+            Ok(_) => tracing::info!("Created S3 bucket: {bucket}"),
             Err(e) => tracing::warn!("S3 bucket may already exist: {e}"),
         }
 
-        Ok(Self {
-            client,
-            bucket,
-            endpoint,
-            public_endpoint,
-        })
+        Ok(Self { client, bucket, public_endpoint })
     }
+}
 
-    pub async fn upload(
-        &self,
-        data: Vec<u8>,
-        content_type: &str,
-        prefix: &str,
-    ) -> anyhow::Result<String> {
+#[async_trait]
+impl StorageBackend for S3Storage {
+    async fn upload(&self, data: Vec<u8>, _content_type: &str, prefix: &str) -> anyhow::Result<String> {
         let key = format!("{}/{}.jpg", prefix, Uuid::new_v4());
 
         self.client
@@ -53,14 +53,14 @@ impl Storage {
             .bucket(&self.bucket)
             .key(&key)
             .body(ByteStream::from(data))
-            .content_type(content_type)
+            .content_type(_content_type)
             .send()
             .await?;
 
         Ok(key)
     }
 
-    pub async fn delete(&self, key: &str) -> anyhow::Result<()> {
+    async fn delete(&self, key: &str) -> anyhow::Result<()> {
         self.client
             .delete_object()
             .bucket(&self.bucket)
@@ -70,7 +70,7 @@ impl Storage {
         Ok(())
     }
 
-    pub fn public_url(&self, key: &str) -> String {
+    fn public_url(&self, key: &str) -> String {
         format!("{}/{}/{}", self.public_endpoint, self.bucket, key)
     }
 }
