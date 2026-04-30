@@ -6,22 +6,131 @@
   html {
     scroll-behavior: smooth;
   }
+
+  ::selection {
+    background-color: #b9ddc5;
+    color: #0d2818;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f5f1ea;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #c9b894;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #bda47a;
+  }
+}
+
+@layer utilities {
+  .topo-bg {
+    background-color: #faf8f4;
+    background-image: url("/topo-pattern.svg");
+    background-size: 400px 400px;
+  }
+
+  .topo-bg-dark {
+    background-color: #163926;
+    background-image: url("/topo-pattern-flip.svg");
+    background-size: 400px 400px;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-           hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
-           disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-forest-700 px-6 py-3
+           text-sm font-medium text-cream-50
+           hover:bg-forest-600 active:bg-forest-800
+           focus:outline-none focus:ring-2 focus:ring-forest-400 focus:ring-offset-2 focus:ring-offset-cream-50
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700
-           hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
-           disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-clay-300 bg-white/80 px-6 py-3
+           text-sm font-medium text-clay-800
+           hover:bg-clay-50 hover:border-clay-400 active:bg-clay-100
+           focus:outline-none focus:ring-2 focus:ring-forest-400 focus:ring-offset-2 focus:ring-offset-cream-50
+           disabled:opacity-50 disabled:cursor-not-allowed
+           backdrop-blur-sm transition-all duration-200;
   }
 
   .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply rounded-2xl border border-clay-200 bg-white shadow-sm
+           transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-lg hover:-translate-y-0.5;
+  }
+
+  .card-glass {
+    @apply rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md shadow-lg;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-clay-200 bg-white px-4 py-3 text-sm
+           text-clay-900 placeholder:text-clay-400
+           focus:border-forest-400 focus:outline-none focus:ring-2 focus:ring-forest-200
+           transition-all duration-200;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  }
+
+  .tag-green {
+    @apply tag bg-forest-100 text-forest-800;
+  }
+
+  .tag-yellow {
+    @apply tag bg-earth-100 text-earth-800;
+  }
+
+  .tag-red {
+    @apply tag bg-red-50 text-red-700;
+  }
+
+  .tag-gray {
+    @apply tag bg-clay-100 text-clay-700;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

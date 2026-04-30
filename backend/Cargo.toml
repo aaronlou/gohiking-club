@@ -39,3 +39,8 @@ image = "0.25"
 # Object storage
 aws-sdk-s3 = "1"
 aws-config = "1"
+
+# Auth
+argon2 = "0.5"
+jsonwebtoken = "9"
+rand = "0.8"

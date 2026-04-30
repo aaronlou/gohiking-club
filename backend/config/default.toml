@@ -10,6 +10,10 @@ bucket = "gohiking-photos"
 endpoint = "http://localhost:9000"  # MinIO for development
 region = "us-east-1"
 
+[auth]
+jwt_secret = "change-me-in-production-use-a-long-random-string"
+jwt_expires_in_secs = 604800
+
 [ai_scoring]
 active = "claude"
 threshold = 60.0

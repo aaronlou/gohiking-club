@@ -6,7 +6,14 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub storage: StorageConfig,
+    pub auth: AuthConfig,
     pub ai_scoring: AiScoringConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AuthConfig {
+    pub jwt_secret: String,
+    pub jwt_expires_in_secs: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

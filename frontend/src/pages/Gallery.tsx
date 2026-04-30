@@ -2,11 +2,12 @@ import { useState } from "react";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { usePhotos, useDeletePhoto } from "@/hooks/usePhotos";
 import { useEvents } from "@/hooks/useEvents";
+import { SlidersHorizontal, X } from "lucide-react";
 import type { PhotoStatus } from "@/types";
 
 const tabs: { label: string; value: PhotoStatus | "all" }[] = [
+  { label: "精选", value: "approved" },
   { label: "全部", value: "all" },
-  { label: "已通过", value: "approved" },
   { label: "审核中", value: "pending" },
   { label: "未通过", value: "rejected" },
 ];
@@ -29,33 +30,49 @@ export default function Gallery() {
   const { data: photos = [], isLoading } = usePhotos(filter);
   const deleteMutation = useDeletePhoto();
 
+  const hasActiveFilters = minScore !== undefined || eventId !== "";
+
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">照片画廊</h1>
-          <p className="text-sm text-gray-500">
-            浏览徒步社区的高质量照片
+          <p className="font-display text-xs tracking-widest uppercase text-clay-400">
+            浏览
+          </p>
+          <h1 className="font-display text-3xl font-semibold text-clay-900 mt-1">
+            照片画廊
+          </h1>
+          <p className="mt-1.5 text-clay-500">
+            徒步社区的高质量照片
           </p>
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="btn-secondary text-sm w-full sm:w-auto"
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all shrink-0 self-start ${
+            showFilters || hasActiveFilters
+              ? "bg-forest-100 text-forest-700 border border-forest-200"
+              : "bg-clay-100 text-clay-600 hover:bg-clay-200 border border-transparent"
+          }`}
         >
-          {showFilters ? "收起筛选" : "展开筛选"}
+          <SlidersHorizontal className="h-4 w-4" />
+          筛选
+          {hasActiveFilters && (
+            <span className="inline-flex h-2 w-2 rounded-full bg-forest-500" />
+          )}
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1 overflow-x-auto">
+      <div className="mb-6 flex gap-2 overflow-x-auto">
         {tabs.map(({ label, value }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`flex-1 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-all ${
               tab === value
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-forest-700 text-cream-50 shadow-sm"
+                : "bg-white text-clay-600 border border-clay-200 hover:border-clay-300 hover:text-clay-800"
             }`}
           >
             {label}
@@ -63,47 +80,66 @@ export default function Gallery() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters panel */}
       {showFilters && (
-        <div className="mb-6 card space-y-4 p-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              最低评分：{minScore ?? "不限"}
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={minScore ?? 0}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                setMinScore(v > 0 ? v : undefined);
-              }}
-              className="mt-1 w-full accent-brand-600"
-            />
-            <div className="mt-1 flex justify-between text-xs text-gray-400">
-              <span>0</span>
-              <span>50</span>
-              <span>100</span>
-            </div>
+        <div className="mb-6 rounded-2xl border border-clay-200 bg-white p-5 shadow-sm animate-slide-up-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-medium text-clay-700">筛选条件</span>
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setMinScore(undefined);
+                  setEventId("");
+                }}
+                className="inline-flex items-center gap-1 text-xs text-clay-500 hover:text-clay-700 transition-colors"
+              >
+                <X className="h-3 w-3" />
+                清除筛选
+              </button>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              所属活动
-            </label>
-            <select
-              value={eventId}
-              onChange={(e) => setEventId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">全部活动</option>
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title} ({e.photo_count})
-                </option>
-              ))}
-            </select>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm text-clay-600 mb-2">
+                最低评分：<span className="font-medium text-clay-800">{minScore ?? "不限"}</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={minScore ?? 0}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMinScore(v > 0 ? v : undefined);
+                }}
+                className="w-full accent-forest-600 h-2 rounded-full appearance-none bg-clay-200 cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-forest-600 [&::-webkit-slider-thumb]:shadow-sm"
+              />
+              <div className="mt-1 flex justify-between text-xs text-clay-400">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-clay-600 mb-2">
+                所属活动
+              </label>
+              <select
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+                className="input-field"
+              >
+                <option value="">全部活动</option>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.title} ({e.photo_count})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       )}

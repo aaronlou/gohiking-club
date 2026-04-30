@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::api::auth_extractor::AuthenticatedUser;
 use crate::models::photo::PhotoResponse;
 use crate::AppState;
 
@@ -19,13 +20,12 @@ pub struct PhotoFilter {
     pub offset: Option<i64>,
 }
 
-/// Upload a photo — optionally tied to an event.
+/// Upload a photo — requires auth.
 pub async fn upload(
+    auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<PhotoResponse>, (StatusCode, String)> {
-    let user_id = Uuid::new_v4(); // TODO: extract from auth context
-
     let mut file_data = None;
     let mut title = None;
     let mut description = None;
@@ -56,7 +56,7 @@ pub async fn upload(
 
     let photo = state
         .photo_service
-        .upload_photo(user_id, data.to_vec(), title, description, event_id)
+        .upload_photo(auth_user.id, data.to_vec(), title, description, event_id)
         .await
         .map_err(|e| {
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Upload failed: {e}"))
@@ -99,11 +99,22 @@ pub async fn get(
     Ok(Json(photo))
 }
 
-/// Delete a photo.
+/// Delete a photo — checks ownership.
 pub async fn delete(
+    auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    let photo = state
+        .photo_service
+        .get_photo(id)
+        .await
+        .map_err(|_| (StatusCode::NOT_FOUND, "Photo not found".to_string()))?;
+
+    if photo.user_id != auth_user.id {
+        return Err((StatusCode::FORBIDDEN, "Not your photo".to_string()));
+    }
+
     state
         .photo_service
         .delete_photo(id)

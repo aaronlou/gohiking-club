@@ -1,11 +1,21 @@
 import axios from "axios";
-import type { Photo, PhotoFilter, User, Event, CreateEventRequest } from "@/types";
+import type { Photo, PhotoFilter, User, Event, CreateEventRequest, AuthResponse, RegisterRequest, LoginRequest } from "@/types";
 
 const api = axios.create({
   baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+// ── Auth interceptor ──
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("auth-token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // ── Photos ──
@@ -48,21 +58,6 @@ export async function deletePhoto(id: string): Promise<void> {
   await api.delete(`/photos/${id}`);
 }
 
-// ── Users ──
-
-export async function registerUser(
-  username: string,
-  email: string,
-): Promise<User> {
-  const { data } = await api.post<User>("/auth/register", { username, email });
-  return data;
-}
-
-export async function getUser(id: string): Promise<User> {
-  const { data } = await api.get<User>(`/users/${id}`);
-  return data;
-}
-
 // ── Events ──
 
 export async function createEvent(req: CreateEventRequest): Promise<Event> {
@@ -89,5 +84,22 @@ export async function joinEvent(id: string): Promise<void> {
 
 export async function getEventPhotos(id: string): Promise<Photo[]> {
   const { data } = await api.get<Photo[]>(`/events/${id}/photos`);
+  return data;
+}
+
+// ── Auth ──
+
+export async function registerUser(req: RegisterRequest): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>("/auth/register", req);
+  return data;
+}
+
+export async function loginUser(req: LoginRequest): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>("/auth/login", req);
+  return data;
+}
+
+export async function getMe(): Promise<User> {
+  const { data } = await api.get<User>("/auth/me");
   return data;
 }
