@@ -1,0 +1,7 @@
+target/
+Dockerfile
+docker-compose*
+.env
+.env.example
+uploads/
+*.log

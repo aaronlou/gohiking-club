@@ -14,12 +14,14 @@ use axum::{
 };
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use crate::ai::registry::ScorerRegistry;
-use crate::ai::{claude::ClaudeScorer, ollama::OllamaScorer, openai::OpenAIScorer, PhotoScorer};
+use crate::ai::{claude::ClaudeScorer, gemini::GeminiScorer, ollama::OllamaScorer, openai::OpenAIScorer, PhotoScorer};
 use crate::config::AppConfig;
 use crate::infra::db;
+use crate::infra::local_storage::LocalStorage;
 use crate::infra::storage::S3Storage;
 use crate::infra::storage_backend::StorageBackend;
 use crate::infra::veimagex::VeImageXStorage;
@@ -58,6 +60,10 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
                 vc.secret_key,
             ))
         }
+        "local" => {
+            let local = config.storage.local.clone().expect("Local config required when backend = \"local\"");
+            Arc::new(LocalStorage::new(&local.base_dir, &local.public_url_prefix)?)
+        }
         _ => {
             // Default to S3 / MinIO
             let s3 = config.storage.s3.clone().expect("S3 config required when backend = \"s3\"");
@@ -87,6 +93,8 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
     let state = AppState::new(pool, photo_service, auth_service);
 
     let app = Router::new()
+        // Static uploads (for local storage backend)
+        .nest_service("/uploads", ServeDir::new("./uploads"))
         // Auth
         .route("/api/auth/register", post(api::auth::register))
         .route("/api/auth/login", post(api::auth::login))
@@ -132,6 +140,10 @@ fn build_scorers(config: &AppConfig) -> HashMap<String, Box<dyn PhotoScorer>> {
                     .clone()
                     .unwrap_or_else(|| "http://localhost:11434".into());
                 Box::new(OllamaScorer::new(endpoint, provider_config.model.clone()))
+            }
+            "gemini" => {
+                let api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+                Box::new(GeminiScorer::new(api_key).with_model(&provider_config.model))
             }
             _ => {
                 tracing::warn!("Unknown scorer provider: {name}, skipping");

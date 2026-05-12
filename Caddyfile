@@ -1,0 +1,18 @@
+{$DOMAIN} {
+    # ── API & uploads ──
+    reverse_proxy /api/* backend:3000
+    reverse_proxy /uploads/* backend:3000
+
+    # ── Frontend SPA ──
+    reverse_proxy frontend:80
+
+    # ── Security headers ──
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # ── Compression ──
+    encode gzip zstd
+}

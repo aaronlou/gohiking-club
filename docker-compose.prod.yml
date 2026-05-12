@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gohiking
+      POSTGRES_USER: ${POSTGRES_USER:-gohiking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gohiking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gohiking
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-gohiking}:${POSTGRES_PASSWORD}@postgres:5432/gohiking
+      APP__SERVER__HOST: "0.0.0.0"
+      APP__SERVER__PORT: "3000"
+      APP__AUTH__JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      APP__AUTH__JWT_EXPIRES_IN_SECS: "604800"
+      APP__STORAGE__BACKEND: ${STORAGE_BACKEND:-local}
+      APP__STORAGE__LOCAL__BASE_DIR: "/app/uploads"
+      APP__STORAGE__LOCAL__PUBLIC_URL_PREFIX: "https://${DOMAIN}/uploads"
+      APP__STORAGE__S3__ENDPOINT: ${S3_ENDPOINT:-}
+      APP__STORAGE__S3__REGION: ${S3_REGION:-us-east-1}
+      APP__STORAGE__S3__BUCKET: ${S3_BUCKET:-}
+      APP__STORAGE__S3__PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      APP__AI_SCORING__ACTIVE: ${AI_PROVIDER:-gemini}
+      APP__AI_SCORING__THRESHOLD: "60.0"
+      APP__AI_SCORING__CONCURRENT_LIMIT: "5"
+      APP__AI_SCORING__PROVIDERS__GEMINI__MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RUST_LOG: info
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gohiking
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - gohiking
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - gohiking
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:
+
+networks:
+  gohiking:
+    driver: bridge

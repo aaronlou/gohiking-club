@@ -32,6 +32,7 @@ pub struct StorageConfig {
     pub backend: String,
     pub s3: Option<S3Config>,
     pub veimagex: Option<VeImageXConfig>,
+    pub local: Option<LocalConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -48,6 +49,12 @@ pub struct VeImageXConfig {
     pub domain: String,
     pub access_key: String,
     pub secret_key: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LocalConfig {
+    pub base_dir: String,
+    pub public_url_prefix: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

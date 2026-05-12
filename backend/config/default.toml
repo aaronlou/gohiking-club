@@ -6,13 +6,13 @@ port = 3000
 url = "postgres://postgres:postgres@localhost:5432/gohiking"
 
 [storage]
-backend = "s3"  # "s3" or "veimagex"
+backend = "local"  # "s3", "veimagex" or "local"
 
 [storage.s3]
 bucket = "gohiking-photos"
-endpoint = "http://localhost:9000"  # MinIO for development
+endpoint = "http://localhost:9000"
 region = "us-east-1"
-public_endpoint = "http://localhost:9000"  # Dev: same as endpoint
+public_endpoint = "http://localhost:9000"
 
 [storage.veimagex]
 service_id = ""
@@ -20,14 +20,21 @@ domain = ""
 access_key = ""
 secret_key = ""
 
+[storage.local]
+base_dir = "./uploads"
+public_url_prefix = "http://localhost:3000/uploads"
+
 [auth]
 jwt_secret = "change-me-in-production-use-a-long-random-string"
 jwt_expires_in_secs = 604800
 
 [ai_scoring]
-active = "claude"
+active = "gemini"
 threshold = 60.0
 concurrent_limit = 5
+
+[ai_scoring.providers.gemini]
+model = "gemini-2.0-flash"
 
 [ai_scoring.providers.claude]
 model = "claude-sonnet-4-20250506"
