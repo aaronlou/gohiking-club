@@ -20,6 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:-gohiking-backend:local}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-gohiking}:${POSTGRES_PASSWORD}@postgres:5432/gohiking
@@ -47,6 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
     networks:
       - gohiking
 
@@ -54,6 +57,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE:-gohiking-frontend:local}
     restart: unless-stopped
     networks:
       - gohiking
