@@ -13,6 +13,28 @@ pub struct EventReview {
     pub updated_at: DateTime<Utc>,
 }
 
+impl EventReview {
+    pub fn validate_content(content: &str) -> Result<(), &'static str> {
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
+            return Err("感想内容不能为空");
+        }
+        if trimmed.len() > 5000 {
+            return Err("感想内容不能超过5000个字符");
+        }
+        Ok(())
+    }
+
+    pub fn validate_rating(rating: Option<i32>) -> Result<(), &'static str> {
+        if let Some(r) = rating {
+            if r < 1 || r > 5 {
+                return Err("评分必须在1到5之间");
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateEventReviewRequest {
     pub content: String,

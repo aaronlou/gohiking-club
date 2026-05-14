@@ -1,5 +1,7 @@
 pub mod api;
+pub mod filters;
 pub mod models;
+pub mod repositories;
 pub mod services;
 pub mod ai;
 pub mod infra;
@@ -81,7 +83,7 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
 
     // Build AI scorer registry
     let providers = build_scorers(&config);
-    let registry = ScorerRegistry::new(providers);
+    let registry = ScorerRegistry::new(providers, &config.ai_scoring.active);
     let scorer_service = ScoringService::new(
         registry,
         config.ai_scoring.threshold,

@@ -3,7 +3,6 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -12,6 +11,7 @@ use crate::models::event::EventResponse;
 use crate::models::team::{
     CreateTeamRequest, Team, TeamMemberResponse, TeamResponse, UpdateTeamRequest,
 };
+use crate::repositories::team_repository::TeamRepository;
 use crate::AppState;
 
 #[derive(Deserialize)]
@@ -27,23 +27,7 @@ struct TeamMemberRow {
     username: String,
     avatar_url: Option<String>,
     role: String,
-    joined_at: DateTime<Utc>,
-}
-
-async fn get_team_counts(pool: &sqlx::PgPool, team_id: Uuid) -> (i64, i64) {
-    let members: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM team_members WHERE team_id = $1")
-        .bind(team_id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((0,));
-
-    let events: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM events WHERE team_id = $1")
-        .bind(team_id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((0,));
-
-    (members.0, events.0)
+    joined_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub async fn create(
@@ -51,47 +35,25 @@ pub async fn create(
     State(state): State<AppState>,
     Json(req): Json<CreateTeamRequest>,
 ) -> Result<Json<TeamResponse>, (StatusCode, String)> {
-    if req.name.trim().is_empty() || req.slug.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Name and slug are required".into()));
-    }
+    // 1. Domain validation (充血模型)
+    Team::validate_name(&req.name)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.into()))?;
+    Team::validate_slug(&req.slug)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.into()))?;
 
-    let slug = req.slug.trim().to_lowercase().replace(" ", "-");
+    let slug = Team::normalize_slug(&req.slug);
 
-    // Check slug uniqueness
-    let existing: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM teams WHERE slug = $1")
-        .bind(&slug)
-        .fetch_one(&state.pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    // 2. Repository layer
+    let repo = TeamRepository::new(&state.pool);
 
-    if existing.0 > 0 {
+    if repo.exists_by_slug(&slug).await.map_err(internal_error)? {
         return Err((StatusCode::CONFLICT, "Team slug already taken".into()));
     }
 
-    let team = sqlx::query_as::<_, Team>(
-        r#"
-        INSERT INTO teams (name, slug, description, created_by)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-        "#,
-    )
-    .bind(&req.name)
-    .bind(&slug)
-    .bind(&req.description)
-    .bind(auth_user.id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    // Creator auto-joins as admin
-    sqlx::query(
-        "INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'admin')",
-    )
-    .bind(team.id)
-    .bind(auth_user.id)
-    .execute(&state.pool)
-    .await
-    .ok();
+    let team = repo
+        .create_with_creator(&req.name, &slug, req.description.as_deref(), auth_user.id)
+        .await
+        .map_err(internal_error)?;
 
     Ok(Json(TeamResponse::from((team, 1, 0))))
 }
@@ -100,27 +62,19 @@ pub async fn list(
     State(state): State<AppState>,
     Query(filter): Query<TeamFilter>,
 ) -> Result<Json<Vec<TeamResponse>>, (StatusCode, String)> {
+    let repo = TeamRepository::new(&state.pool);
     let limit = filter.limit.unwrap_or(20).clamp(1, 100);
     let offset = filter.offset.unwrap_or(0);
 
-    let teams = sqlx::query_as::<_, Team>(
-        r#"
-        SELECT * FROM teams
-        WHERE ($1::text IS NULL OR status = $1)
-        ORDER BY created_at DESC
-        LIMIT $2 OFFSET $3
-        "#,
-    )
-    .bind(filter.status.as_deref())
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let teams = repo
+        .list(filter.status.as_deref(), limit, offset)
+        .await
+        .map_err(internal_error)?;
 
     let mut result = Vec::with_capacity(teams.len());
     for team in teams {
-        let (members, events) = get_team_counts(&state.pool, team.id).await;
+        let members = repo.get_member_count(team.id).await.unwrap_or(0);
+        let events = repo.get_event_count(team.id).await.unwrap_or(0);
         result.push(TeamResponse::from((team, members, events)));
     }
 
@@ -131,14 +85,16 @@ pub async fn get(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<TeamResponse>, (StatusCode, String)> {
-    let team = sqlx::query_as::<_, Team>("SELECT * FROM teams WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&state.pool)
+    let repo = TeamRepository::new(&state.pool);
+
+    let team = repo
+        .find_by_id(id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(internal_error)?
         .ok_or((StatusCode::NOT_FOUND, "Team not found".to_string()))?;
 
-    let (members, events) = get_team_counts(&state.pool, team.id).await;
+    let members = repo.get_member_count(team.id).await.unwrap_or(0);
+    let events = repo.get_event_count(team.id).await.unwrap_or(0);
     Ok(Json(TeamResponse::from((team, members, events))))
 }
 
@@ -148,42 +104,24 @@ pub async fn update(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateTeamRequest>,
 ) -> Result<Json<TeamResponse>, (StatusCode, String)> {
-    // Check if user is admin
-    let is_admin: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = 'admin'",
-    )
-    .bind(id)
-    .bind(auth_user.id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let repo = TeamRepository::new(&state.pool);
 
-    if is_admin.0 == 0 {
+    let is_admin = repo
+        .is_admin(id, auth_user.id)
+        .await
+        .map_err(internal_error)?;
+
+    if !is_admin {
         return Err((StatusCode::FORBIDDEN, "Only team admin can update".into()));
     }
 
-    let team = sqlx::query_as::<_, Team>(
-        r#"
-        UPDATE teams
-        SET name = COALESCE($2, name),
-            description = COALESCE($3, description),
-            logo_url = COALESCE($4, logo_url),
-            cover_url = COALESCE($5, cover_url),
-            updated_at = NOW()
-        WHERE id = $1
-        RETURNING *
-        "#,
-    )
-    .bind(id)
-    .bind(&req.name)
-    .bind(&req.description)
-    .bind(&req.logo_url)
-    .bind(&req.cover_url)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let team = repo
+        .update(id, req.name.as_deref(), req.description.as_deref(), req.logo_url.as_deref(), req.cover_url.as_deref())
+        .await
+        .map_err(internal_error)?;
 
-    let (members, events) = get_team_counts(&state.pool, team.id).await;
+    let members = repo.get_member_count(team.id).await.unwrap_or(0);
+    let events = repo.get_event_count(team.id).await.unwrap_or(0);
     Ok(Json(TeamResponse::from((team, members, events))))
 }
 
@@ -192,16 +130,14 @@ pub async fn join(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let result = sqlx::query(
-        "INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-    )
-    .bind(id)
-    .bind(auth_user.id)
-    .execute(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let repo = TeamRepository::new(&state.pool);
 
-    if result.rows_affected() == 0 {
+    let added = repo
+        .add_member(id, auth_user.id, "member")
+        .await
+        .map_err(internal_error)?;
+
+    if !added {
         return Err((StatusCode::CONFLICT, "Already a member".into()));
     }
 
@@ -213,13 +149,10 @@ pub async fn leave(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    sqlx::query("DELETE FROM team_members WHERE team_id = $1 AND user_id = $2")
-        .bind(id)
-        .bind(auth_user.id)
-        .execute(&state.pool)
+    let repo = TeamRepository::new(&state.pool);
+    repo.remove_member(id, auth_user.id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
+        .map_err(internal_error)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -239,7 +172,7 @@ pub async fn get_members(
     .bind(id)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(
         rows
@@ -259,6 +192,8 @@ pub async fn get_events(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<EventResponse>>, (StatusCode, String)> {
+    use crate::repositories::event_repository::EventRepository;
+
     let events = sqlx::query_as::<_, crate::models::event::Event>(
         r#"
         SELECT * FROM events
@@ -269,27 +204,20 @@ pub async fn get_events(
     .bind(id)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    let event_repo = EventRepository::new(&state.pool);
     let mut result = Vec::with_capacity(events.len());
     for event in events {
-        let members: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM event_members WHERE event_id = $1")
-            .bind(event.id)
-            .fetch_one(&state.pool)
-            .await
-            .unwrap_or((0,));
-        let photos: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM photos WHERE event_id = $1")
-            .bind(event.id)
-            .fetch_one(&state.pool)
-            .await
-            .unwrap_or((0,));
-        let reviews: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM event_reviews WHERE event_id = $1")
-            .bind(event.id)
-            .fetch_one(&state.pool)
-            .await
-            .unwrap_or((0,));
-        result.push(EventResponse::from((event, members.0, photos.0, reviews.0)));
+        let members = event_repo.get_member_count(event.id).await.unwrap_or(0);
+        let photos = event_repo.get_photo_count(event.id).await.unwrap_or(0);
+        let reviews = event_repo.get_review_count(event.id).await.unwrap_or(0);
+        result.push(EventResponse::from((event, members, photos, reviews)));
     }
 
     Ok(Json(result))
+}
+
+fn internal_error(e: anyhow::Error) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
 }

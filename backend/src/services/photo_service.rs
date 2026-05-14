@@ -3,11 +3,25 @@ use std::sync::Arc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::api::photos::PhotoFilter;
+use crate::filters::PhotoFilter;
 use crate::infra::storage_backend::StorageBackend;
+use crate::ai::ScoreResult;
 use crate::models::photo::{Photo, PhotoResponse, PhotoStatus};
 use crate::models::user::{User, UserResponse};
 use crate::services::scoring_service::ScoringService;
+
+fn score_result_to_json(s: ScoreResult) -> serde_json::Value {
+    serde_json::json!({
+        "overall": s.overall,
+        "dimensions": {
+            "composition": s.dimensions.composition,
+            "lighting": s.dimensions.lighting,
+            "clarity": s.dimensions.clarity,
+            "subject_interest": s.dimensions.subject_interest,
+        },
+        "raw_feedback": s.raw_feedback,
+    })
+}
 
 pub struct PhotoService {
     pool: PgPool,
@@ -46,7 +60,7 @@ impl PhotoService {
                 } else {
                     PhotoStatus::Rejected
                 };
-                (result.overall, Some(serde_json::Value::from(result)), status)
+                (result.overall, Some(score_result_to_json(result)), status)
             }
             Err(e) => {
                 tracing::warn!("AI scoring failed: {e}, defaulting to pending");

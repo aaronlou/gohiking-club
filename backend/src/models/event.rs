@@ -25,6 +25,19 @@ pub struct EventMember {
     pub joined_at: DateTime<Utc>,
 }
 
+impl Event {
+    pub fn validate_title(title: &str) -> Result<(), &'static str> {
+        let trimmed = title.trim();
+        if trimmed.is_empty() {
+            return Err("活动标题不能为空");
+        }
+        if trimmed.len() > 200 {
+            return Err("活动标题不能超过200个字符");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateEventRequest {
     pub title: String,

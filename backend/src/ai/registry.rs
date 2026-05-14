@@ -13,10 +13,15 @@ pub struct ScorerRegistry {
 
 impl ScorerRegistry {
     /// Create a new registry with the given providers.
-    /// The first provider in the map is set as active.
-    pub fn new(providers: HashMap<String, Box<dyn PhotoScorer>>) -> Self {
-        let active = providers.keys().next().cloned().unwrap_or_default();
-        Self { providers, active }
+    /// `default_active` specifies which provider is active by default.
+    pub fn new(
+        providers: HashMap<String, Box<dyn PhotoScorer>>,
+        default_active: &str,
+    ) -> Self {
+        Self {
+            providers,
+            active: default_active.to_string(),
+        }
     }
 
     /// Get a reference to the active scorer.
@@ -80,7 +85,7 @@ mod tests {
         providers.insert("a".into(), Box::new(MockScorer("a")));
         providers.insert("b".into(), Box::new(MockScorer("b")));
 
-        let mut reg = ScorerRegistry::new(providers);
+        let mut reg = ScorerRegistry::new(providers, "a");
         assert_eq!(reg.active_name(), "a");
 
         reg.switch("b").unwrap();

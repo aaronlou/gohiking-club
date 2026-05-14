@@ -2,8 +2,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::ai::ScoreResult;
-
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq)]
 #[sqlx(type_name = "photo_status", rename_all = "lowercase")]
 pub enum PhotoStatus {
@@ -69,17 +67,4 @@ impl From<Photo> for PhotoResponse {
     }
 }
 
-impl From<ScoreResult> for serde_json::Value {
-    fn from(s: ScoreResult) -> Self {
-        serde_json::json!({
-            "overall": s.overall,
-            "dimensions": {
-                "composition": s.dimensions.composition,
-                "lighting": s.dimensions.lighting,
-                "clarity": s.dimensions.clarity,
-                "subject_interest": s.dimensions.subject_interest,
-            },
-            "raw_feedback": s.raw_feedback,
-        })
-    }
-}
+

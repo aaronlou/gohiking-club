@@ -4,6 +4,7 @@ use crate::models::user::{
     AuthResponse, LoginByPasswordRequest, RegisterByPasswordRequest, UserResponse,
 };
 use crate::api::auth_extractor::AuthenticatedUser;
+use crate::repositories::user_repository::UserRepository;
 use crate::AppState;
 
 /// Register with username + email + password.
@@ -18,60 +19,37 @@ pub async fn register(
         ));
     }
 
-    // Check email uniqueness
-    let existing = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM users WHERE email = $1",
-    )
-    .bind(&req.email)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let user_repo = UserRepository::new(&state.pool);
 
-    if existing > 0 {
+    // Check email uniqueness
+    if user_repo.exists_by_email(&req.email).await.map_err(internal_error)? {
         return Err((StatusCode::CONFLICT, "Email already registered".into()));
     }
 
     let password_hash = state
         .auth_service
         .hash_password(&req.password)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(internal_error)?;
 
-    let user = sqlx::query_as::<_, crate::models::user::User>(
-        r#"
-        INSERT INTO users (username, email, password_hash)
-        VALUES ($1, $2, $3)
-        RETURNING *
-        "#,
-    )
-    .bind(&req.username)
-    .bind(&req.email)
-    .bind(&password_hash)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| {
-        if e.to_string().contains("duplicate") {
-            (StatusCode::CONFLICT, "Username already taken".into())
-        } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        }
-    })?;
+    let user = user_repo
+        .create(&req.username, &req.email, &password_hash)
+        .await
+        .map_err(|e| {
+            if e.to_string().contains("duplicate") {
+                (StatusCode::CONFLICT, "Username already taken".into())
+            } else {
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            }
+        })?;
 
     let token = state
         .auth_service
         .create_token(user.id, &user.email)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(internal_error)?;
 
     Ok(Json(AuthResponse {
         token,
-        user: UserResponse {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            avatar_url: user.avatar_url,
-            bio: user.bio,
-            photo_count: 0,
-            created_at: user.created_at,
-        },
+        user: user.into(),
     }))
 }
 
@@ -80,16 +58,15 @@ pub async fn login(
     State(state): State<AppState>,
     Json(req): Json<LoginByPasswordRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, String)> {
-    let user = sqlx::query_as::<_, crate::models::user::User>(
-        "SELECT * FROM users WHERE email = $1",
-    )
-    .bind(&req.email)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or_else(|| {
-        (StatusCode::UNAUTHORIZED, "Invalid email or password".into())
-    })?;
+    let user_repo = UserRepository::new(&state.pool);
+
+    let user = user_repo
+        .find_by_email(&req.email)
+        .await
+        .map_err(internal_error)?
+        .ok_or_else(|| {
+            (StatusCode::UNAUTHORIZED, "Invalid email or password".into())
+        })?;
 
     if !state.auth_service.verify_password(&req.password, &user.password_hash) {
         return Err((StatusCode::UNAUTHORIZED, "Invalid email or password".into()));
@@ -98,16 +75,9 @@ pub async fn login(
     let token = state
         .auth_service
         .create_token(user.id, &user.email)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(internal_error)?;
 
-    // Count approved photos
-    let photo_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM photos WHERE user_id = $1 AND status = 'approved'",
-    )
-    .bind(user.id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let photo_count = user_repo.get_photo_count(user.id).await.unwrap_or(0);
 
     Ok(Json(AuthResponse {
         token,
@@ -117,7 +87,7 @@ pub async fn login(
             email: user.email,
             avatar_url: user.avatar_url,
             bio: user.bio,
-            photo_count: photo_count.0,
+            photo_count,
             created_at: user.created_at,
         },
     }))
@@ -128,22 +98,15 @@ pub async fn me(
     auth_user: AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<UserResponse>, (StatusCode, String)> {
-    let user = sqlx::query_as::<_, crate::models::user::User>(
-        "SELECT * FROM users WHERE id = $1",
-    )
-    .bind(auth_user.id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or_else(|| (StatusCode::NOT_FOUND, "User not found".into()))?;
+    let user_repo = UserRepository::new(&state.pool);
 
-    let photo_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM photos WHERE user_id = $1 AND status = 'approved'",
-    )
-    .bind(user.id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let user = user_repo
+        .find_by_id(auth_user.id)
+        .await
+        .map_err(internal_error)?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "User not found".into()))?;
+
+    let photo_count = user_repo.get_photo_count(user.id).await.unwrap_or(0);
 
     Ok(Json(UserResponse {
         id: user.id,
@@ -151,7 +114,11 @@ pub async fn me(
         email: user.email,
         avatar_url: user.avatar_url,
         bio: user.bio,
-        photo_count: photo_count.0,
+        photo_count,
         created_at: user.created_at,
     }))
+}
+
+fn internal_error(e: anyhow::Error) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
 }

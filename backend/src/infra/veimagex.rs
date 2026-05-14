@@ -5,8 +5,10 @@ use uuid::Uuid;
 
 use super::storage_backend::StorageBackend;
 
+#[allow(dead_code)]
 type HmacSha256 = Hmac<Sha256>;
 
+#[allow(dead_code)]
 pub struct VeImageXStorage {
     service_id: String,
     domain: String,

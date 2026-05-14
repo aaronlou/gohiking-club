@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::api::auth_extractor::AuthenticatedUser;
 use crate::models::event::{CreateEventRequest, Event, EventResponse};
 use crate::models::photo::{Photo, PhotoResponse};
+use crate::repositories::event_repository::EventRepository;
 use crate::AppState;
 
 #[derive(Deserialize)]
@@ -18,71 +19,27 @@ pub struct EventFilter {
     pub offset: Option<i64>,
 }
 
-async fn get_counts(pool: &sqlx::PgPool, event_id: Uuid) -> (i64, i64, i64) {
-    let members: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM event_members WHERE event_id = $1",
-    )
-    .bind(event_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or((0,));
-
-    let photos: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM photos WHERE event_id = $1",
-    )
-    .bind(event_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or((0,));
-
-    let reviews: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM event_reviews WHERE event_id = $1",
-    )
-    .bind(event_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or((0,));
-
-    (members.0, photos.0, reviews.0)
-}
-
 pub async fn create(
     auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     Json(req): Json<CreateEventRequest>,
 ) -> Result<Json<EventResponse>, (StatusCode, String)> {
-    let user_id = auth_user.id;
+    // Domain validation
+    Event::validate_title(&req.title)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.into()))?;
 
-    if req.title.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Title is required".into()));
-    }
-
-    let event = sqlx::query_as::<_, Event>(
-        r#"
-        INSERT INTO events (title, description, location, date, created_by, team_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-        "#,
-    )
-    .bind(&req.title)
-    .bind(&req.description)
-    .bind(&req.location)
-    .bind(&req.date)
-    .bind(user_id)
-    .bind(req.team_id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    // Creator auto-joins as admin
-    sqlx::query(
-        "INSERT INTO event_members (event_id, user_id, role) VALUES ($1, $2, 'admin')",
-    )
-    .bind(event.id)
-    .bind(user_id)
-    .execute(&state.pool)
-    .await
-    .ok();
+    let repo = EventRepository::new(&state.pool);
+    let event = repo
+        .create_with_creator(
+            &req.title,
+            req.description.as_deref(),
+            req.location.as_deref(),
+            req.date.as_ref(),
+            auth_user.id,
+            req.team_id,
+        )
+        .await
+        .map_err(internal_error)?;
 
     Ok(Json(EventResponse::from((event, 1, 0, 0))))
 }
@@ -91,27 +48,20 @@ pub async fn list(
     State(state): State<AppState>,
     Query(filter): Query<EventFilter>,
 ) -> Result<Json<Vec<EventResponse>>, (StatusCode, String)> {
+    let repo = EventRepository::new(&state.pool);
     let limit = filter.limit.unwrap_or(20).clamp(1, 100);
     let offset = filter.offset.unwrap_or(0);
 
-    let events = sqlx::query_as::<_, Event>(
-        r#"
-        SELECT * FROM events
-        WHERE ($1::text IS NULL OR status = $1)
-        ORDER BY date DESC NULLS LAST, created_at DESC
-        LIMIT $2 OFFSET $3
-        "#,
-    )
-    .bind(filter.status.as_deref())
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let events = repo
+        .list(filter.status.as_deref(), limit, offset)
+        .await
+        .map_err(internal_error)?;
 
     let mut result = Vec::with_capacity(events.len());
     for event in events {
-        let (members, photos, reviews) = get_counts(&state.pool, event.id).await;
+        let members = repo.get_member_count(event.id).await.unwrap_or(0);
+        let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
+        let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
         result.push(EventResponse::from((event, members, photos, reviews)));
     }
 
@@ -122,14 +72,17 @@ pub async fn get(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<EventResponse>, (StatusCode, String)> {
-    let event = sqlx::query_as::<_, Event>("SELECT * FROM events WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&state.pool)
+    let repo = EventRepository::new(&state.pool);
+
+    let event = repo
+        .find_by_id(id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(internal_error)?
         .ok_or((StatusCode::NOT_FOUND, "Event not found".to_string()))?;
 
-    let (members, photos, reviews) = get_counts(&state.pool, event.id).await;
+    let members = repo.get_member_count(event.id).await.unwrap_or(0);
+    let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
+    let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
     Ok(Json(EventResponse::from((event, members, photos, reviews))))
 }
 
@@ -138,18 +91,13 @@ pub async fn join(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let user_id = auth_user.id;
+    let repo = EventRepository::new(&state.pool);
+    let added = repo
+        .add_member(id, auth_user.id, "member")
+        .await
+        .map_err(internal_error)?;
 
-    let result = sqlx::query(
-        "INSERT INTO event_members (event_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-    )
-    .bind(id)
-    .bind(user_id)
-    .execute(&state.pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    if result.rows_affected() == 0 {
+    if !added {
         return Err((StatusCode::CONFLICT, "Already joined".into()));
     }
 
@@ -170,7 +118,11 @@ pub async fn get_photos(
     .bind(id)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(photos.into_iter().map(Into::into).collect()))
+}
+
+fn internal_error(e: anyhow::Error) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
 }

@@ -43,3 +43,17 @@ pub struct UserResponse {
     pub photo_count: i64,
     pub created_at: DateTime<Utc>,
 }
+
+impl From<User> for UserResponse {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            avatar_url: user.avatar_url,
+            bio: user.bio,
+            photo_count: 0,
+            created_at: user.created_at,
+        }
+    }
+}

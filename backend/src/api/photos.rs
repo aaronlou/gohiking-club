@@ -3,22 +3,12 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::auth_extractor::AuthenticatedUser;
+use crate::filters::PhotoFilter;
 use crate::models::photo::PhotoResponse;
 use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct PhotoFilter {
-    pub status: Option<String>,
-    pub min_score: Option<f64>,
-    pub user_id: Option<Uuid>,
-    pub event_id: Option<Uuid>,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
 
 /// Upload a photo — requires auth.
 pub async fn upload(
