@@ -26,7 +26,7 @@ public_url_prefix = "http://localhost:3000/uploads"
 
 [auth]
 jwt_secret = "change-me-in-production-use-a-long-random-string"
-jwt_expires_in_secs = 604800
+jwt_expires_in_secs = 2592000
 
 [ai_scoring]
 active = "gemini"

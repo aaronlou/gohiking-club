@@ -20,17 +20,17 @@ impl<'a> UserRepository<'a> {
         Ok(user)
     }
 
-    pub async fn find_by_email(&self, email: &str) -> anyhow::Result<Option<User>> {
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
-            .bind(email)
+    pub async fn find_by_username(&self, username: &str) -> anyhow::Result<Option<User>> {
+        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE username = $1")
+            .bind(username)
             .fetch_optional(self.pool)
             .await?;
         Ok(user)
     }
 
-    pub async fn exists_by_email(&self, email: &str) -> anyhow::Result<bool> {
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE email = $1")
-            .bind(email)
+    pub async fn exists_by_username(&self, username: &str) -> anyhow::Result<bool> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE username = $1")
+            .bind(username)
             .fetch_one(self.pool)
             .await?;
         Ok(count.0 > 0)

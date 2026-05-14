@@ -7,23 +7,25 @@ use crate::api::auth_extractor::AuthenticatedUser;
 use crate::repositories::user_repository::UserRepository;
 use crate::AppState;
 
-/// Register with username + email + password.
+/// Register with username + password only.
+/// Email is auto-generated internally to satisfy DB constraints.
 pub async fn register(
     State(state): State<AppState>,
     Json(req): Json<RegisterByPasswordRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, String)> {
-    if req.username.is_empty() || req.email.is_empty() || req.password.len() < 6 {
+    let username = req.username.trim();
+    if username.is_empty() || req.password.len() < 6 {
         return Err((
             StatusCode::BAD_REQUEST,
-            "Username, email, and password (min 6 chars) required".into(),
+            "Username and password (min 6 chars) required".into(),
         ));
     }
 
     let user_repo = UserRepository::new(&state.pool);
 
-    // Check email uniqueness
-    if user_repo.exists_by_email(&req.email).await.map_err(internal_error)? {
-        return Err((StatusCode::CONFLICT, "Email already registered".into()));
+    // Check username uniqueness
+    if user_repo.exists_by_username(username).await.map_err(internal_error)? {
+        return Err((StatusCode::CONFLICT, "用户名已被使用".into()));
     }
 
     let password_hash = state
@@ -31,12 +33,15 @@ pub async fn register(
         .hash_password(&req.password)
         .map_err(internal_error)?;
 
+    // Auto-generate email to satisfy DB NOT NULL constraint
+    let email = format!("{}@user.gohiking", username);
+
     let user = user_repo
-        .create(&req.username, &req.email, &password_hash)
+        .create(username, &email, &password_hash)
         .await
         .map_err(|e| {
             if e.to_string().contains("duplicate") {
-                (StatusCode::CONFLICT, "Username already taken".into())
+                (StatusCode::CONFLICT, "用户名或邮箱已被使用".into())
             } else {
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
@@ -53,7 +58,7 @@ pub async fn register(
     }))
 }
 
-/// Login with email + password.
+/// Login with username + password.
 pub async fn login(
     State(state): State<AppState>,
     Json(req): Json<LoginByPasswordRequest>,
@@ -61,15 +66,15 @@ pub async fn login(
     let user_repo = UserRepository::new(&state.pool);
 
     let user = user_repo
-        .find_by_email(&req.email)
+        .find_by_username(&req.username)
         .await
         .map_err(internal_error)?
         .ok_or_else(|| {
-            (StatusCode::UNAUTHORIZED, "Invalid email or password".into())
+            (StatusCode::UNAUTHORIZED, "用户名或密码错误".into())
         })?;
 
     if !state.auth_service.verify_password(&req.password, &user.password_hash) {
-        return Err((StatusCode::UNAUTHORIZED, "Invalid email or password".into()));
+        return Err((StatusCode::UNAUTHORIZED, "用户名或密码错误".into()));
     }
 
     let token = state
@@ -104,7 +109,7 @@ pub async fn me(
         .find_by_id(auth_user.id)
         .await
         .map_err(internal_error)?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "User not found".into()))?;
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "用户不存在".into()))?;
 
     let photo_count = user_repo.get_photo_count(user.id).await.unwrap_or(0);
 

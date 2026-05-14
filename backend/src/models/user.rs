@@ -17,13 +17,12 @@ pub struct User {
 #[derive(Debug, Deserialize)]
 pub struct RegisterByPasswordRequest {
     pub username: String,
-    pub email: String,
     pub password: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LoginByPasswordRequest {
-    pub email: String,
+    pub username: String,
     pub password: String,
 }
 

@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
 import { CalendarDays, Plus, Loader2, MapPin } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { AuthModal } from "@/components/AuthModal";
 import { useEvents } from "@/hooks/useEvents";
 import { EventCard } from "@/components/EventCard";
 
 export default function Events() {
   const { data: events = [], isLoading } = useEvents({ limit: 50 });
+  const user = useAuth((s) => s.user);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   return (
     <div className="animate-fade-in">
@@ -25,10 +30,20 @@ export default function Events() {
               创建或加入活动，一起分享徒步照片
             </p>
           </div>
-          <Link to="/events/new" className="btn-primary shrink-0 self-start">
-            <Plus className="h-4 w-4" />
-            <span>创建活动</span>
-          </Link>
+          {user ? (
+            <Link to="/events/new" className="btn-primary shrink-0 self-start">
+              <Plus className="h-4 w-4" />
+              <span>创建活动</span>
+            </Link>
+          ) : (
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="btn-primary shrink-0 self-start"
+            >
+              <Plus className="h-4 w-4" />
+              <span>创建活动</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -52,10 +67,13 @@ export default function Events() {
             <p className="text-clay-500 mb-8 max-w-xs mx-auto">
               创建一个新活动，开始组织徒步吧！
             </p>
-            <Link to="/events/new" className="btn-primary">
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="btn-primary"
+            >
               <Plus className="h-4 w-4" />
               创建第一个活动
-            </Link>
+            </button>
           </div>
         </div>
       ) : (
@@ -71,6 +89,7 @@ export default function Events() {
           ))}
         </div>
       )}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} defaultMode="register" />
     </div>
   );
 }

@@ -1,9 +1,14 @@
 import { Link } from "react-router-dom";
 import { Users, Plus, ArrowRight, Mountain, Compass } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { AuthModal } from "@/components/AuthModal";
 import { useTeams } from "@/hooks/useTeams";
 
 export default function Teams() {
   const { data: teams = [], isLoading } = useTeams();
+  const user = useAuth((s) => s.user);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   return (
     <div className="animate-fade-in">
@@ -24,13 +29,20 @@ export default function Teams() {
               加入或创建团队，和志同道合的伙伴一起探索山野
             </p>
           </div>
-          <Link
-            to="/teams/new"
-            className="btn-primary shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            创建团队
-          </Link>
+          {user ? (
+            <Link to="/teams/new" className="btn-primary shrink-0">
+              <Plus className="h-4 w-4" />
+              创建团队
+            </Link>
+          ) : (
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="btn-primary shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              创建团队
+            </button>
+          )}
         </div>
       </div>
 
@@ -51,10 +63,13 @@ export default function Teams() {
             <p className="text-clay-500 mb-8 max-w-xs mx-auto">
               成为第一个创建徒步团队的人吧，召集志同道合的伙伴
             </p>
-            <Link to="/teams/new" className="btn-primary inline-flex items-center gap-2">
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="btn-primary inline-flex items-center gap-2"
+            >
               <Plus className="h-4 w-4" />
               创建团队
-            </Link>
+            </button>
           </div>
         </div>
       ) : (
@@ -98,6 +113,7 @@ export default function Teams() {
           ))}
         </div>
       )}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} defaultMode="register" />
     </div>
   );
 }
