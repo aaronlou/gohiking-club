@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { Mountain, Upload, Sparkles, CalendarDays, ArrowRight } from "lucide-react";
+import { Upload, Sparkles, CalendarDays, ArrowRight, Compass, TreePine, Camera } from "lucide-react";
 import { usePhotos } from "@/hooks/usePhotos";
 import { useEvents } from "@/hooks/useEvents";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { EventCard } from "@/components/EventCard";
 import { CanvasHero } from "@/components/CanvasHero";
+import { MountainBackground } from "@/components/MountainBackground";
 
 export default function Home() {
   const { data: photos = [], isLoading } = usePhotos({
@@ -16,40 +17,35 @@ export default function Home() {
   return (
     <div>
       {/* ── Hero ── */}
-      <section className="relative mb-16 sm:mb-20 overflow-hidden rounded-3xl bg-gradient-to-b from-forest-900 via-forest-800 to-forest-950 px-6 py-16 sm:px-12 sm:py-20 lg:px-16">
-        {/* Topographic overlay */}
-        <div className="absolute inset-0 opacity-[0.08] bg-[url('/topo-pattern-flip.svg')] bg-[length:300px_300px]" />
+      <section className="relative mb-16 sm:mb-20 overflow-hidden rounded-3xl px-6 py-20 sm:px-12 sm:py-24 lg:px-16 min-h-[520px] flex items-center">
+        <MountainBackground />
 
-        {/* Decorative gradient orbs */}
-        <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-earth-500/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-forest-400/10 blur-3xl" />
-
-        <div className="relative z-10">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-cream-300 backdrop-blur-sm">
-            <Mountain className="h-3.5 w-3.5" />
+        <div className="relative z-10 w-full max-w-4xl mx-auto">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200/80 backdrop-blur-sm">
+            <Compass className="h-3.5 w-3.5" />
             徒步爱好者社区
           </div>
 
           <CanvasHero />
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Link
               to="/upload"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-earth-500 px-6 py-3 text-sm font-medium text-cream-50 hover:bg-earth-600 active:bg-earth-700 transition-all duration-200 shadow-lg shadow-earth-500/20"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-amber-600 px-7 py-3.5 text-sm font-medium text-cream-50 hover:bg-amber-500 active:bg-amber-700 transition-all duration-200 shadow-lg shadow-amber-900/30 hover:shadow-amber-800/40 hover:-translate-y-0.5"
             >
-              <Upload className="h-4 w-4" />
+              <Camera className="h-4 w-4 group-hover:scale-110 transition-transform" />
               上传照片
             </Link>
             <Link
               to="/events"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-medium text-cream-100 hover:bg-white/20 transition-all duration-200 backdrop-blur-sm"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/8 px-7 py-3.5 text-sm font-medium text-cream-100 hover:bg-white/15 hover:border-white/25 transition-all duration-200 backdrop-blur-sm hover:-translate-y-0.5"
             >
-              <CalendarDays className="h-4 w-4" />
+              <TreePine className="h-4 w-4" />
               浏览活动
             </Link>
             <Link
               to="/gallery"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-transparent px-6 py-3 text-sm font-medium text-cream-300 hover:text-cream-100 hover:border-white/20 transition-all duration-200"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/8 bg-transparent px-7 py-3.5 text-sm font-medium text-cream-300/80 hover:text-cream-100 hover:border-white/15 hover:bg-white/5 transition-all duration-200 hover:-translate-y-0.5"
             >
               <Sparkles className="h-4 w-4" />
               浏览画廊
