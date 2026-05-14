@@ -18,7 +18,7 @@ pub struct EventFilter {
     pub offset: Option<i64>,
 }
 
-async fn get_counts(pool: &sqlx::PgPool, event_id: Uuid) -> (i64, i64) {
+async fn get_counts(pool: &sqlx::PgPool, event_id: Uuid) -> (i64, i64, i64) {
     let members: (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM event_members WHERE event_id = $1",
     )
@@ -35,7 +35,15 @@ async fn get_counts(pool: &sqlx::PgPool, event_id: Uuid) -> (i64, i64) {
     .await
     .unwrap_or((0,));
 
-    (members.0, photos.0)
+    let reviews: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM event_reviews WHERE event_id = $1",
+    )
+    .bind(event_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or((0,));
+
+    (members.0, photos.0, reviews.0)
 }
 
 pub async fn create(
@@ -51,8 +59,8 @@ pub async fn create(
 
     let event = sqlx::query_as::<_, Event>(
         r#"
-        INSERT INTO events (title, description, location, date, created_by)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO events (title, description, location, date, created_by, team_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         "#,
     )
@@ -61,6 +69,7 @@ pub async fn create(
     .bind(&req.location)
     .bind(&req.date)
     .bind(user_id)
+    .bind(req.team_id)
     .fetch_one(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -75,7 +84,7 @@ pub async fn create(
     .await
     .ok();
 
-    Ok(Json(EventResponse::from((event, 1, 0))))
+    Ok(Json(EventResponse::from((event, 1, 0, 0))))
 }
 
 pub async fn list(
@@ -102,8 +111,8 @@ pub async fn list(
 
     let mut result = Vec::with_capacity(events.len());
     for event in events {
-        let (members, photos) = get_counts(&state.pool, event.id).await;
-        result.push(EventResponse::from((event, members, photos)));
+        let (members, photos, reviews) = get_counts(&state.pool, event.id).await;
+        result.push(EventResponse::from((event, members, photos, reviews)));
     }
 
     Ok(Json(result))
@@ -120,8 +129,8 @@ pub async fn get(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Event not found".to_string()))?;
 
-    let (members, photos) = get_counts(&state.pool, event.id).await;
-    Ok(Json(EventResponse::from((event, members, photos))))
+    let (members, photos, reviews) = get_counts(&state.pool, event.id).await;
+    Ok(Json(EventResponse::from((event, members, photos, reviews))))
 }
 
 pub async fn join(

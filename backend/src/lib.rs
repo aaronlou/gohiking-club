@@ -109,6 +109,16 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         .route("/api/events/:id", get(api::events::get))
         .route("/api/events/:id/join", post(api::events::join))
         .route("/api/events/:id/photos", get(api::events::get_photos))
+        // Teams
+        .route("/api/teams", post(api::teams::create).get(api::teams::list))
+        .route("/api/teams/:id", get(api::teams::get).put(api::teams::update))
+        .route("/api/teams/:id/join", post(api::teams::join))
+        .route("/api/teams/:id/leave", post(api::teams::leave))
+        .route("/api/teams/:id/members", get(api::teams::get_members))
+        .route("/api/teams/:id/events", get(api::teams::get_events))
+        // Event Reviews
+        .route("/api/events/:id/reviews", post(api::event_reviews::create).get(api::event_reviews::list))
+        .route("/api/events/:id/reviews/:review_id", post(api::event_reviews::delete))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

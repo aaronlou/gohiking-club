@@ -11,6 +11,7 @@ pub struct Event {
     pub date: Option<NaiveDate>,
     pub cover_url: Option<String>,
     pub created_by: Uuid,
+    pub team_id: Option<Uuid>,
     pub status: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -30,6 +31,7 @@ pub struct CreateEventRequest {
     pub description: Option<String>,
     pub location: Option<String>,
     pub date: Option<NaiveDate>,
+    pub team_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]
@@ -41,14 +43,16 @@ pub struct EventResponse {
     pub date: Option<NaiveDate>,
     pub cover_url: Option<String>,
     pub created_by: Uuid,
+    pub team_id: Option<Uuid>,
     pub status: String,
     pub member_count: i64,
     pub photo_count: i64,
+    pub review_count: i64,
     pub created_at: DateTime<Utc>,
 }
 
-impl From<(Event, i64, i64)> for EventResponse {
-    fn from((e, members, photos): (Event, i64, i64)) -> Self {
+impl From<(Event, i64, i64, i64)> for EventResponse {
+    fn from((e, members, photos, reviews): (Event, i64, i64, i64)) -> Self {
         Self {
             id: e.id,
             title: e.title,
@@ -57,9 +61,11 @@ impl From<(Event, i64, i64)> for EventResponse {
             date: e.date,
             cover_url: e.cover_url,
             created_by: e.created_by,
+            team_id: e.team_id,
             status: e.status,
             member_count: members,
             photo_count: photos,
+            review_count: reviews,
             created_at: e.created_at,
         }
     }

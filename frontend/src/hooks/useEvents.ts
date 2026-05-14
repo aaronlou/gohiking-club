@@ -45,3 +45,25 @@ export function useJoinEvent() {
     },
   });
 }
+
+// ── Event Reviews ──
+
+export function useEventReviews(eventId: string) {
+  return useQuery({
+    queryKey: ["events", eventId, "reviews"],
+    queryFn: () => api.listEventReviews(eventId),
+    enabled: !!eventId,
+  });
+}
+
+export function useCreateEventReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, content, rating }: { eventId: string; content: string; rating?: number }) =>
+      api.createEventReview(eventId, content, rating),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["events", vars.eventId, "reviews"] });
+      qc.invalidateQueries({ queryKey: ["events", vars.eventId] });
+    },
+  });
+}

@@ -54,9 +54,11 @@ export interface Event {
   date: string | null;
   cover_url: string | null;
   created_by: string;
+  team_id: string | null;
   status: string;
   member_count: number;
   photo_count: number;
+  review_count: number;
   created_at: string;
 }
 
@@ -65,6 +67,50 @@ export interface CreateEventRequest {
   description?: string;
   location?: string;
   date?: string;
+  team_id?: string;
+}
+
+// ── Team ──
+
+export interface Team {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  created_by: string;
+  status: string;
+  member_count: number;
+  event_count: number;
+  created_at: string;
+}
+
+export interface TeamMember {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  role: string;
+  joined_at: string;
+}
+
+export interface CreateTeamRequest {
+  name: string;
+  slug: string;
+  description?: string;
+}
+
+// ── Event Review ──
+
+export interface EventReview {
+  id: string;
+  event_id: string;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  content: string;
+  rating: number | null;
+  created_at: string;
 }
 
 // ── Auth ──

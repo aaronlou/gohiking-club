@@ -7,6 +7,9 @@ import Home from "@/pages/Home";
 import Events from "@/pages/Events";
 import EventDetail from "@/pages/EventDetail";
 import CreateEvent from "@/pages/CreateEvent";
+import Teams from "@/pages/Teams";
+import TeamDetail from "@/pages/TeamDetail";
+import CreateTeam from "@/pages/CreateTeam";
 import Gallery from "@/pages/Gallery";
 import UploadPage from "@/pages/Upload";
 import Profile from "@/pages/Profile";
@@ -45,6 +48,9 @@ function AppRoutes() {
         <Route path="/events" element={<Events />} />
         <Route path="/events/new" element={<CreateEvent />} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/teams" element={<Teams />} />
+        <Route path="/teams/new" element={<CreateTeam />} />
+        <Route path="/teams/:id" element={<TeamDetail />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/profile" element={<Profile />} />

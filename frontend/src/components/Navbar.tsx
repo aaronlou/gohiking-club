@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { Mountain, Image, Upload, User, CalendarDays, Menu, X, LogOut } from "lucide-react";
+import { Mountain, Image, Upload, User, CalendarDays, Menu, X, LogOut, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const links = [
   { to: "/", label: "首页", icon: Mountain },
+  { to: "/teams", label: "团队", icon: Users },
   { to: "/events", label: "活动", icon: CalendarDays },
   { to: "/gallery", label: "画廊", icon: Image },
   { to: "/upload", label: "上传", icon: Upload },
