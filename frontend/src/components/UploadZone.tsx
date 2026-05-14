@@ -32,9 +32,6 @@ export function UploadZone({ onDrop, disabled }: UploadZoneProps) {
           : "border-clay-300 hover:border-forest-400 hover:bg-cream-50"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
-      {/* Topographic background pattern (subtle) */}
-      <div className="absolute inset-0 opacity-[0.04] bg-[url('/topo-pattern.svg')] bg-[length:300px_300px]" />
-
       <input {...getInputProps()} />
 
       <div className="relative z-10 flex flex-col items-center">

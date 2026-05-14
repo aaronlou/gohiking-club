@@ -138,11 +138,6 @@ export function MountainBackground() {
         />
       </svg>
 
-      {/* Subtle topo pattern overlay - very faint */}
-      <div
-        className="absolute inset-0 opacity-[0.03] bg-[url('/topo-pattern-flip.svg')] bg-[length:400px_400px]"
-      />
-
       {/* Vignette overlay for depth */}
       <div
         className="absolute inset-0"

@@ -60,10 +60,7 @@ export default {
         display: ['"Fraunces"', "Georgia", "serif"],
         body: ['"DM Sans"', "system-ui", "sans-serif"],
       },
-      backgroundImage: {
-        "topo": "url('/topo-pattern.svg')",
-        "topo-flip": "url('/topo-pattern-flip.svg')",
-      },
+      backgroundImage: {},
       animation: {
         "fade-in": "fadeIn 0.6s ease-out both",
         "slide-up": "slideUp 0.6s ease-out both",

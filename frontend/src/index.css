@@ -31,18 +31,6 @@
 }
 
 @layer utilities {
-  .topo-bg {
-    background-color: #faf8f4;
-    background-image: url("/topo-pattern.svg");
-    background-size: 400px 400px;
-  }
-
-  .topo-bg-dark {
-    background-color: #163926;
-    background-image: url("/topo-pattern-flip.svg");
-    background-size: 400px 400px;
-  }
-
   .text-balance {
     text-wrap: balance;
   }
@@ -68,16 +56,16 @@
   }
 
   .card {
-    @apply rounded-2xl border border-clay-200 bg-white shadow-sm
+    @apply rounded-2xl border border-clay-100 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]
            transition-all duration-300;
   }
 
   .card-hover {
-    @apply card hover:shadow-lg hover:-translate-y-0.5;
+    @apply card hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.04)] hover:-translate-y-0.5;
   }
 
   .card-glass {
-    @apply rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md shadow-lg;
+    @apply rounded-2xl border border-white/30 bg-white/80 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06)];
   }
 
   .input-field {

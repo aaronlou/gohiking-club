@@ -34,33 +34,38 @@ export default function Gallery() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="font-display text-xs tracking-widest uppercase text-clay-400">
-            浏览
-          </p>
-          <h1 className="font-display text-3xl font-semibold text-clay-900 mt-1">
-            照片画廊
-          </h1>
-          <p className="mt-1.5 text-clay-500">
-            徒步社区的高质量照片
-          </p>
+      {/* Hero header with gradient */}
+      <div className="relative -mx-4 -mt-8 sm:-mx-6 sm:-mt-12 lg:-mx-8 mb-6 px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-8 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-forest-50 via-cream-50 to-earth-50" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(22,57,38,0.04)_0%,_transparent_50%)]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-forest-100/80 px-3 py-1 text-xs font-medium text-forest-700 mb-3">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              浏览照片
+            </div>
+            <h1 className="font-display text-3xl font-semibold text-clay-900">
+              照片画廊
+            </h1>
+            <p className="mt-1.5 text-clay-500 max-w-md">
+              徒步社区的高质量照片
+            </p>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all shrink-0 self-start ${
+              showFilters || hasActiveFilters
+                ? "bg-forest-100 text-forest-700 border border-forest-200"
+                : "bg-clay-100 text-clay-600 hover:bg-clay-200 border border-transparent"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            筛选
+            {hasActiveFilters && (
+              <span className="inline-flex h-2 w-2 rounded-full bg-forest-500" />
+            )}
+          </button>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all shrink-0 self-start ${
-            showFilters || hasActiveFilters
-              ? "bg-forest-100 text-forest-700 border border-forest-200"
-              : "bg-clay-100 text-clay-600 hover:bg-clay-200 border border-transparent"
-          }`}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          筛选
-          {hasActiveFilters && (
-            <span className="inline-flex h-2 w-2 rounded-full bg-forest-500" />
-          )}
-        </button>
       </div>
 
       {/* Tabs */}
