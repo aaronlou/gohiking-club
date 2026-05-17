@@ -521,6 +521,51 @@ pub async fn reject_join_request(
     Ok(StatusCode::OK)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateMemberRoleRequest {
+    pub role: String,
+}
+
+pub async fn update_member_role(
+    auth_user: AuthenticatedUser,
+    State(state): State<AppState>,
+    Path((team_id, user_id)): Path<(Uuid, Uuid)>,
+    Json(req): Json<UpdateMemberRoleRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let repo = TeamRepository::new(&state.pool);
+
+    // Only admin can update member roles
+    let is_admin = repo
+        .is_admin(team_id, auth_user.id)
+        .await
+        .map_err(internal_error)?;
+
+    if !is_admin {
+        return Err((StatusCode::FORBIDDEN, "Only team admin can update member roles".into()));
+    }
+
+    // Cannot change your own role
+    if auth_user.id == user_id {
+        return Err((StatusCode::FORBIDDEN, "Cannot change your own role".into()));
+    }
+
+    // Validate role
+    if req.role != "admin" && req.role != "member" {
+        return Err((StatusCode::BAD_REQUEST, "Role must be 'admin' or 'member'".into()));
+    }
+
+    let updated = repo
+        .update_member_role(team_id, user_id, &req.role)
+        .await
+        .map_err(internal_error)?;
+
+    if !updated {
+        return Err((StatusCode::NOT_FOUND, "Member not found in this team".into()));
+    }
+
+    Ok(StatusCode::OK)
+}
+
 fn internal_error(e: anyhow::Error) -> (StatusCode, String) {
     (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
 }

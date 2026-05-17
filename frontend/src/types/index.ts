@@ -94,11 +94,13 @@ export interface Team {
   created_at: string;
 }
 
+export type TeamMemberRole = "admin" | "member";
+
 export interface TeamMember {
   user_id: string;
   username: string;
   avatar_url: string | null;
-  role: string;
+  role: TeamMemberRole;
   joined_at: string;
 }
 

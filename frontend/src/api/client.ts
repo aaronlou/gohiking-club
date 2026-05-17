@@ -204,6 +204,10 @@ export async function loginUser(req: LoginRequest): Promise<AuthResponse> {
   return data;
 }
 
+export async function updateMemberRole(teamId: string, userId: string, role: "admin" | "member"): Promise<void> {
+  await api.put(`/teams/${teamId}/members/${userId}/role`, { role });
+}
+
 export async function getMe(): Promise<User> {
   const { data } = await api.get<User>("/auth/me");
   return data;

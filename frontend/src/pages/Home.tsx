@@ -70,20 +70,20 @@ export default function Home() {
           {[
             {
               icon: Upload,
-              title: "上传照片",
-              desc: "支持 JPG / PNG / WebP 格式，拖拽即可上传",
+              title: "珍藏影像",
+              desc: "保存每次徒步中的珍贵片段，让山野间的回忆持续更久一些",
               color: "bg-forest-100 text-forest-700",
             },
             {
               icon: Sparkles,
-              title: "AI 智能评分",
-              desc: "从构图、光线、清晰度、主题等多维度自动评分",
+              title: "智能甄选",
+              desc: "AI 自动筛选最值得珍藏的影像记忆，帮你留下最闪闪发光的时刻",
               color: "bg-earth-100 text-earth-700",
             },
             {
               icon: CalendarDays,
-              title: "活动组织",
-              desc: "创建徒步活动，邀请朋友一起分享照片",
+              title: "足迹留温",
+              desc: "活动信息记录、成员评论互动，用文字和影像共同保存行走的温度",
               color: "bg-clay-100 text-clay-700",
             },
           ].map(({ icon: Icon, title, desc, color }, i) => (

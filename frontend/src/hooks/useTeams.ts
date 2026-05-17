@@ -148,3 +148,14 @@ export function useUpdateTeam() {
     },
   });
 }
+
+export function useUpdateMemberRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, userId, role }: { teamId: string; userId: string; role: "admin" | "member" }) =>
+      api.updateMemberRole(teamId, userId, role),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["teams", vars.teamId, "members"] });
+    },
+  });
+}

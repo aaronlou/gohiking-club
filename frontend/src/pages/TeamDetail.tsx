@@ -15,6 +15,8 @@ import {
   Shield,
   Clock,
   ImagePlus,
+  ShieldCheck,
+  User,
 } from "lucide-react";
 import {
   useTeam,
@@ -28,6 +30,7 @@ import {
   useApproveJoinRequest,
   useRejectJoinRequest,
   useUpdateTeam,
+  useUpdateMemberRole,
 } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
 import { EventCard } from "@/components/EventCard";
@@ -48,6 +51,7 @@ export default function TeamDetail() {
   const approveRequest = useApproveJoinRequest();
   const rejectRequest = useRejectJoinRequest();
   const updateTeam = useUpdateTeam();
+  const updateMemberRole = useUpdateMemberRole();
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"events" | "members" | "settings">("events");
@@ -102,6 +106,15 @@ export default function TeamDetail() {
     } finally {
       setCoverUploading(false);
     }
+  };
+
+  const handleRoleChange = (userId: string, newRole: "admin" | "member") => {
+    if (!id) return;
+    const member = members.find((m) => m.user_id === userId);
+    if (!member) return;
+    const actionText = newRole === "admin" ? "设为管理员" : "降为普通成员";
+    if (!confirm(`确定要将 "${member.username}" ${actionText}吗？`)) return;
+    updateMemberRole.mutate({ teamId: id, userId, role: newRole });
   };
 
   if (isLoading) {
@@ -264,10 +277,35 @@ export default function TeamDetail() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-clay-900 truncate">{member.username}</p>
-                {member.role === "admin" && (
-                  <span className="text-xs text-forest-600">管理员</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {member.role === "admin" ? (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-forest-600">
+                      <ShieldCheck className="h-3 w-3" />
+                      管理员
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-clay-400">
+                      <User className="h-3 w-3" />
+                      成员
+                    </span>
+                  )}
+                </div>
               </div>
+              {isAdmin && member.user_id !== user?.id && (
+                <button
+                  onClick={() =>
+                    handleRoleChange(member.user_id, member.role === "admin" ? "member" : "admin")
+                  }
+                  disabled={updateMemberRole.isPending}
+                  className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                    member.role === "admin"
+                      ? "text-clay-600 bg-clay-100 hover:bg-clay-200"
+                      : "text-forest-700 bg-forest-50 hover:bg-forest-100"
+                  }`}
+                >
+                  {member.role === "admin" ? "降为成员" : "设为管理员"}
+                </button>
+              )}
             </div>
           ))}
           {members.length === 0 && (
@@ -367,6 +405,73 @@ export default function TeamDetail() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Member Role Management */}
+          <div className="rounded-2xl border border-clay-200 bg-white p-6 shadow-sm">
+            <h3 className="font-display text-lg font-semibold text-clay-900 flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-forest-600" />
+              成员角色管理
+            </h3>
+
+            <div className="space-y-2">
+              {members.map((member) => (
+                <div
+                  key={member.user_id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-clay-100 bg-cream-50 p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-9 w-9 rounded-full bg-forest-100 flex items-center justify-center text-forest-700 text-sm font-medium shrink-0">
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} alt={member.username} className="h-9 w-9 rounded-full object-cover" />
+                      ) : (
+                        member.username.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-clay-900">{member.username}</p>
+                      <span
+                        className={`inline-flex items-center gap-0.5 text-xs ${
+                          member.role === "admin" ? "text-forest-600" : "text-clay-400"
+                        }`}
+                      >
+                        {member.role === "admin" ? (
+                          <>
+                            <ShieldCheck className="h-3 w-3" />
+                            管理员
+                          </>
+                        ) : (
+                          <>
+                            <User className="h-3 w-3" />
+                            普通成员
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  {member.user_id === user?.id ? (
+                    <span className="text-xs text-clay-400 shrink-0">你自己</span>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        handleRoleChange(member.user_id, member.role === "admin" ? "member" : "admin")
+                      }
+                      disabled={updateMemberRole.isPending}
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                        member.role === "admin"
+                          ? "text-clay-700 bg-clay-100 hover:bg-clay-200"
+                          : "text-white bg-forest-600 hover:bg-forest-700"
+                      }`}
+                    >
+                      {member.role === "admin" ? "降为成员" : "设为管理员"}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {members.length === 0 && (
+                <p className="text-sm text-clay-400">暂无成员</p>
+              )}
+            </div>
           </div>
 
           {/* Join Requests */}

@@ -378,4 +378,22 @@ impl<'a> TeamRepository<'a> {
         .await?;
         Ok(())
     }
+
+    /// Update a member's role in the team.
+    pub async fn update_member_role(
+        &self,
+        team_id: Uuid,
+        user_id: Uuid,
+        role: &str,
+    ) -> anyhow::Result<bool> {
+        let result = sqlx::query(
+            "UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3",
+        )
+        .bind(role)
+        .bind(team_id)
+        .bind(user_id)
+        .execute(self.pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
 }

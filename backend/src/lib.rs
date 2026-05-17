@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use sqlx::PgPool;
@@ -117,6 +117,7 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         .route("/api/teams/:id/join", post(api::teams::join))
         .route("/api/teams/:id/leave", post(api::teams::leave))
         .route("/api/teams/:id/members", get(api::teams::get_members))
+        .route("/api/teams/:id/members/:user_id/role", put(api::teams::update_member_role))
         .route("/api/teams/:id/events", get(api::teams::get_events))
         // Team invitations
         .route("/api/teams/:id/invitations", post(api::teams::create_invitation).get(api::teams::list_invitations))
