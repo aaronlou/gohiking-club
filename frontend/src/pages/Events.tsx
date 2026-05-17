@@ -67,13 +67,23 @@ export default function Events() {
             <p className="text-clay-500 mb-8 max-w-xs mx-auto">
               创建一个新活动，开始组织徒步吧！
             </p>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="btn-primary"
-            >
-              <Plus className="h-4 w-4" />
-              创建第一个活动
-            </button>
+            {user ? (
+              <Link
+                to="/events/new"
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                创建第一个活动
+              </Link>
+            ) : (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                创建第一个活动
+              </button>
+            )}
           </div>
         </div>
       ) : (

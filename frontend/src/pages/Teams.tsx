@@ -63,13 +63,23 @@ export default function Teams() {
             <p className="text-clay-500 mb-8 max-w-xs mx-auto">
               成为第一个创建徒步团队的人吧，召集志同道合的伙伴
             </p>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              创建团队
-            </button>
+            {user ? (
+              <Link
+                to="/teams/new"
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                创建团队
+              </Link>
+            ) : (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                创建团队
+              </button>
+            )}
           </div>
         </div>
       ) : (
