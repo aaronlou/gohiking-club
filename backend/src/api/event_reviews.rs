@@ -62,10 +62,6 @@ pub async fn create(
         WITH inserted AS (
             INSERT INTO event_reviews (event_id, user_id, content, rating)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (event_id, user_id) DO UPDATE SET
-                content = EXCLUDED.content,
-                rating = EXCLUDED.rating,
-                updated_at = NOW()
             RETURNING *
         )
         SELECT i.*, u.username, u.avatar_url

@@ -14,6 +14,7 @@ import {
   XCircle,
   Shield,
   Clock,
+  ImagePlus,
 } from "lucide-react";
 import {
   useTeam,
@@ -26,9 +27,11 @@ import {
   useJoinRequests,
   useApproveJoinRequest,
   useRejectJoinRequest,
+  useUpdateTeam,
 } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
 import { EventCard } from "@/components/EventCard";
+import { uploadPhoto } from "@/api/client";
 
 export default function TeamDetail() {
   const { user } = useAuth();
@@ -44,9 +47,11 @@ export default function TeamDetail() {
   const createInvitation = useCreateTeamInvitation();
   const approveRequest = useApproveJoinRequest();
   const rejectRequest = useRejectJoinRequest();
+  const updateTeam = useUpdateTeam();
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"events" | "members" | "settings">("events");
+  const [coverUploading, setCoverUploading] = useState(false);
 
   const isMember = user ? members.some((m) => m.user_id === user.id) : false;
   const isAdmin = user ? members.some((m) => m.user_id === user.id && m.role === "admin") : false;
@@ -83,6 +88,20 @@ export default function TeamDetail() {
   const handleReject = (requestId: string) => {
     if (!id) return;
     rejectRequest.mutate({ teamId: id, requestId });
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setCoverUploading(true);
+    try {
+      const photo = await uploadPhoto(file);
+      await updateTeam.mutateAsync({ id, updates: { cover_url: photo.url } });
+    } catch {
+      // ignore
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   if (isLoading) {
@@ -260,6 +279,34 @@ export default function TeamDetail() {
       {/* Settings Tab (Admin only) */}
       {activeTab === "settings" && isAdmin && (
         <div className="space-y-8">
+          {/* Cover Image */}
+          <div className="rounded-2xl border border-clay-200 bg-white p-6 shadow-sm">
+            <h3 className="font-display text-lg font-semibold text-clay-900 flex items-center gap-2 mb-4">
+              <ImagePlus className="h-5 w-5 text-forest-600" />
+              团队背景图
+            </h3>
+            <div className="relative aspect-[4/1] rounded-xl overflow-hidden bg-clay-100 mb-3">
+              {team.cover_url ? (
+                <img src={team.cover_url} alt="cover" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-clay-300 text-sm">
+                  暂无背景图
+                </div>
+              )}
+            </div>
+            <label className="btn-secondary inline-flex items-center gap-2 cursor-pointer">
+              <ImagePlus className="h-4 w-4" />
+              {coverUploading ? "上传中..." : "上传新背景图"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverUpload}
+                disabled={coverUploading}
+              />
+            </label>
+          </div>
+
           {/* Invitations */}
           <div className="rounded-2xl border border-clay-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">

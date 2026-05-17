@@ -137,3 +137,14 @@ export function useRejectJoinRequest() {
     },
   });
 }
+
+export function useUpdateTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof api.updateTeam>[1] }) =>
+      api.updateTeam(id, updates),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["teams", vars.id] });
+    },
+  });
+}

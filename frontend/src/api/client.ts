@@ -131,6 +131,11 @@ export async function getTeamEvents(id: string): Promise<Event[]> {
   return data;
 }
 
+export async function updateTeam(id: string, updates: Partial<{ name: string; description: string; logo_url: string; cover_url: string; default_disclaimer: string }>): Promise<Team> {
+  const { data } = await api.put<Team>(`/teams/${id}`, updates);
+  return data;
+}
+
 // ── Event Reviews ──
 
 export async function createEventReview(
