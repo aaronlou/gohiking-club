@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mountain, Loader2, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuth((s) => s.login);
   const register = useAuth((s) => s.register);
+  const from = (location.state as any)?.from || "/";
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +25,7 @@ export default function Login() {
       } else {
         await register(username, password);
       }
-      navigate("/");
+      navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.error || (mode === "login" ? "登录失败" : "注册失败"));
     } finally {

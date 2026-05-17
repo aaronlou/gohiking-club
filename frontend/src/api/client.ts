@@ -3,6 +3,7 @@ import type {
   Photo, PhotoFilter, User, Event, CreateEventRequest,
   AuthResponse, RegisterRequest, LoginRequest,
   Team, CreateTeamRequest, TeamMember, EventReview,
+  TeamInvitation, TeamJoinRequest,
 } from "@/types";
 
 const api = axios.create({
@@ -68,6 +69,8 @@ export async function createEvent(req: CreateEventRequest): Promise<Event> {
   const { data } = await api.post<Event>("/events", req);
   return data;
 }
+
+
 
 export async function listEvents(filter?: {
   status?: string;
@@ -150,6 +153,41 @@ export async function listEventReviews(eventId: string): Promise<EventReview[]> 
 
 export async function deleteEventReview(eventId: string, reviewId: string): Promise<void> {
   await api.post(`/events/${eventId}/reviews/${reviewId}`);
+}
+
+// ── Team Invitations ──
+
+export async function createTeamInvitation(teamId: string, maxUses?: number, expiresAt?: string): Promise<TeamInvitation> {
+  const { data } = await api.post<TeamInvitation>(`/teams/${teamId}/invitations`, { max_uses: maxUses, expires_at: expiresAt });
+  return data;
+}
+
+export async function listTeamInvitations(teamId: string): Promise<TeamInvitation[]> {
+  const { data } = await api.get<TeamInvitation[]>(`/teams/${teamId}/invitations`);
+  return data;
+}
+
+export async function getInvitationByCode(code: string): Promise<{ invitation: TeamInvitation; team: Team }> {
+  const { data } = await api.get<{ invitation: TeamInvitation; team: Team }>(`/teams/invitations/${code}`);
+  return data;
+}
+
+export async function applyJoinTeam(code: string, message?: string): Promise<TeamJoinRequest> {
+  const { data } = await api.post<TeamJoinRequest>(`/teams/invitations/${code}/apply`, { message });
+  return data;
+}
+
+export async function listJoinRequests(teamId: string): Promise<TeamJoinRequest[]> {
+  const { data } = await api.get<TeamJoinRequest[]>(`/teams/${teamId}/join-requests`);
+  return data;
+}
+
+export async function approveJoinRequest(teamId: string, requestId: string): Promise<void> {
+  await api.post(`/teams/${teamId}/join-requests/approve`, { request_id: requestId });
+}
+
+export async function rejectJoinRequest(teamId: string, requestId: string): Promise<void> {
+  await api.post(`/teams/${teamId}/join-requests/reject`, { request_id: requestId });
 }
 
 // ── Auth ──

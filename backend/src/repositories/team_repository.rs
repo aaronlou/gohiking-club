@@ -210,4 +210,172 @@ impl<'a> TeamRepository<'a> {
             .await?;
         Ok(count.0)
     }
+
+    pub async fn is_member(&self, team_id: Uuid, user_id: Uuid) -> anyhow::Result<bool> {
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2"
+        )
+        .bind(team_id)
+        .bind(user_id)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(count.0 > 0)
+    }
+
+    // ── Invitations ──
+
+    pub async fn create_invitation(
+        &self,
+        team_id: Uuid,
+        code: &str,
+        created_by: Uuid,
+        max_uses: Option<i32>,
+        expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> anyhow::Result<crate::models::team::TeamInvitation> {
+        let inv = sqlx::query_as::<_, crate::models::team::TeamInvitation>(
+            r#"
+            INSERT INTO team_invitations (team_id, code, created_by, max_uses, expires_at)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(team_id)
+        .bind(code)
+        .bind(created_by)
+        .bind(max_uses)
+        .bind(expires_at)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(inv)
+    }
+
+    pub async fn find_invitation_by_code(
+        &self,
+        code: &str,
+    ) -> anyhow::Result<Option<crate::models::team::TeamInvitation>> {
+        let inv = sqlx::query_as::<_, crate::models::team::TeamInvitation>(
+            "SELECT * FROM team_invitations WHERE code = $1"
+        )
+        .bind(code)
+        .fetch_optional(self.pool)
+        .await?;
+        Ok(inv)
+    }
+
+    pub async fn increment_invitation_used(
+        &self,
+        code: &str,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE team_invitations SET used_count = used_count + 1 WHERE code = $1"
+        )
+        .bind(code)
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn deactivate_invitation(
+        &self,
+        code: &str,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE team_invitations SET status = 'inactive' WHERE code = $1"
+        )
+        .bind(code)
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn list_invitations(
+        &self,
+        team_id: Uuid,
+    ) -> anyhow::Result<Vec<crate::models::team::TeamInvitation>> {
+        let invs = sqlx::query_as::<_, crate::models::team::TeamInvitation>(
+            "SELECT * FROM team_invitations WHERE team_id = $1 ORDER BY created_at DESC"
+        )
+        .bind(team_id)
+        .fetch_all(self.pool)
+        .await?;
+        Ok(invs)
+    }
+
+    // ── Join Requests ──
+
+    pub async fn create_join_request(
+        &self,
+        team_id: Uuid,
+        user_id: Uuid,
+        invitation_code: Option<&str>,
+        message: Option<&str>,
+    ) -> anyhow::Result<crate::models::team::TeamJoinRequest> {
+        let req = sqlx::query_as::<_, crate::models::team::TeamJoinRequest>(
+            r#"
+            INSERT INTO team_join_requests (team_id, user_id, invitation_code, message)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (team_id, user_id) DO UPDATE SET
+                invitation_code = EXCLUDED.invitation_code,
+                message = EXCLUDED.message,
+                status = 'pending',
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(team_id)
+        .bind(user_id)
+        .bind(invitation_code)
+        .bind(message)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(req)
+    }
+
+    pub async fn find_join_request_by_id(
+        &self,
+        request_id: Uuid,
+    ) -> anyhow::Result<Option<crate::models::team::TeamJoinRequest>> {
+        let req = sqlx::query_as::<_, crate::models::team::TeamJoinRequest>(
+            "SELECT * FROM team_join_requests WHERE id = $1"
+        )
+        .bind(request_id)
+        .fetch_optional(self.pool)
+        .await?;
+        Ok(req)
+    }
+
+    pub async fn list_pending_join_requests(
+        &self,
+        team_id: Uuid,
+    ) -> anyhow::Result<Vec<crate::models::team::JoinRequestRow>> {
+        let rows = sqlx::query_as::<_, crate::models::team::JoinRequestRow>(
+            r#"
+            SELECT r.id, r.team_id, r.user_id, r.invitation_code, r.message, r.status, r.created_at,
+                   u.username, u.avatar_url
+            FROM team_join_requests r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.team_id = $1 AND r.status = 'pending'
+            ORDER BY r.created_at DESC
+            "#,
+        )
+        .bind(team_id)
+        .fetch_all(self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    pub async fn update_join_request_status(
+        &self,
+        request_id: Uuid,
+        status: &str,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE team_join_requests SET status = $1, updated_at = NOW() WHERE id = $2"
+        )
+        .bind(status)
+        .bind(request_id)
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
 }

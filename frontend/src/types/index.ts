@@ -56,9 +56,13 @@ export interface Event {
   created_by: string;
   team_id: string | null;
   status: string;
+  distance_km: number | null;
+  elevation_gain_m: number | null;
+  disclaimer: string | null;
   member_count: number;
   photo_count: number;
   review_count: number;
+  is_team_member: boolean;
   created_at: string;
 }
 
@@ -68,6 +72,9 @@ export interface CreateEventRequest {
   location?: string;
   date?: string;
   team_id?: string;
+  distance_km?: number;
+  elevation_gain_m?: number;
+  disclaimer?: string;
 }
 
 // ── Team ──
@@ -83,6 +90,7 @@ export interface Team {
   status: string;
   member_count: number;
   event_count: number;
+  default_disclaimer: string | null;
   created_at: string;
 }
 
@@ -110,6 +118,31 @@ export interface EventReview {
   avatar_url: string | null;
   content: string;
   rating: number | null;
+  created_at: string;
+}
+
+// ── Team Invitation ──
+
+export interface TeamInvitation {
+  id: string;
+  team_id: string;
+  code: string;
+  max_uses: number | null;
+  used_count: number;
+  expires_at: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface TeamJoinRequest {
+  id: string;
+  team_id: string;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  invitation_code: string | null;
+  message: string | null;
+  status: string;
   created_at: string;
 }
 

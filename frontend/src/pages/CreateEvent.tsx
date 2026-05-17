@@ -1,18 +1,31 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, LogIn } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Loader2, LogIn, FileText } from "lucide-react";
 import { useCreateEvent } from "@/hooks/useEvents";
+import { useTeam } from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const teamId = searchParams.get("team_id");
+  const { data: team } = useTeam(teamId || "");
   const createMutation = useCreateEvent();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
+  const [distanceKm, setDistanceKm] = useState("");
+  const [elevationGainM, setElevationGainM] = useState("");
+  const [disclaimer, setDisclaimer] = useState("");
+
+  useEffect(() => {
+    if (team?.default_disclaimer) {
+      setDisclaimer(team.default_disclaimer);
+    }
+  }, [team?.default_disclaimer]);
 
   if (!user) {
     return (
@@ -43,6 +56,10 @@ export default function CreateEvent() {
       description: description.trim() || undefined,
       location: location.trim() || undefined,
       date: date || undefined,
+      team_id: teamId || undefined,
+      distance_km: distanceKm ? parseFloat(distanceKm) : undefined,
+      elevation_gain_m: elevationGainM ? parseInt(elevationGainM) : undefined,
+      disclaimer: disclaimer.trim() || undefined,
     });
 
     navigate(`/events/${event.id}`);
@@ -51,15 +68,15 @@ export default function CreateEvent() {
   return (
     <div className="mx-auto max-w-2xl">
       <Link
-        to="/events"
+        to={teamId ? `/teams/${teamId}` : "/events"}
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-clay-500 hover:text-clay-700 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        返回活动列表
+        {teamId ? "返回团队" : "返回活动列表"}
       </Link>
 
       <h1 className="font-display text-3xl font-semibold text-clay-900">
-        创建徒步活动
+        {teamId ? `为「${team?.name || ""}」创建活动` : "创建徒步活动"}
       </h1>
       <p className="mt-2 text-clay-500">
         创建一个活动，让其他人加入并分享徒步照片
@@ -119,6 +136,53 @@ export default function CreateEvent() {
               />
             </div>
           </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-clay-700">
+                预估距离（KM）
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={distanceKm}
+                onChange={(e) => setDistanceKm(e.target.value)}
+                placeholder="例如：12.5"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-clay-700">
+                累计爬升（M）
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={elevationGainM}
+                onChange={(e) => setElevationGainM(e.target.value)}
+                placeholder="例如：850"
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-clay-700 flex items-center gap-1.5">
+              <FileText className="h-4 w-4" />
+              免责声明
+            </label>
+            <textarea
+              value={disclaimer}
+              onChange={(e) => setDisclaimer(e.target.value)}
+              placeholder="本活动为自愿参加，组织者不对任何意外事故承担责任..."
+              rows={4}
+              className="input-field"
+            />
+            {team?.default_disclaimer && disclaimer === team.default_disclaimer && (
+              <p className="mt-1 text-xs text-forest-600">已自动引用团队默认免责声明模板</p>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row-reverse">
@@ -132,7 +196,7 @@ export default function CreateEvent() {
             )}
             创建活动
           </button>
-          <Link to="/events" className="btn-secondary px-8 py-3 text-center">
+          <Link to={teamId ? `/teams/${teamId}` : "/events"} className="btn-secondary px-8 py-3 text-center">
             取消
           </Link>
         </div>

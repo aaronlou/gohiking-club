@@ -20,11 +20,14 @@ impl<'a> EventRepository<'a> {
         date: Option<&chrono::NaiveDate>,
         created_by: Uuid,
         team_id: Option<Uuid>,
+        distance_km: Option<f64>,
+        elevation_gain_m: Option<i32>,
+        disclaimer: Option<&str>,
     ) -> anyhow::Result<Event> {
         let event = sqlx::query_as::<_, Event>(
             r#"
-            INSERT INTO events (title, description, location, date, created_by, team_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO events (title, description, location, date, created_by, team_id, distance_km, elevation_gain_m, disclaimer)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
             "#,
         )
@@ -34,6 +37,9 @@ impl<'a> EventRepository<'a> {
         .bind(date)
         .bind(created_by)
         .bind(team_id)
+        .bind(distance_km)
+        .bind(elevation_gain_m)
+        .bind(disclaimer)
         .fetch_one(self.pool)
         .await?;
         Ok(event)
@@ -48,13 +54,16 @@ impl<'a> EventRepository<'a> {
         date: Option<&chrono::NaiveDate>,
         created_by: Uuid,
         team_id: Option<Uuid>,
+        distance_km: Option<f64>,
+        elevation_gain_m: Option<i32>,
+        disclaimer: Option<&str>,
     ) -> anyhow::Result<Event> {
         let mut tx = self.pool.begin().await?;
 
         let event = sqlx::query_as::<_, Event>(
             r#"
-            INSERT INTO events (title, description, location, date, created_by, team_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO events (title, description, location, date, created_by, team_id, distance_km, elevation_gain_m, disclaimer)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
             "#,
         )
@@ -64,6 +73,9 @@ impl<'a> EventRepository<'a> {
         .bind(date)
         .bind(created_by)
         .bind(team_id)
+        .bind(distance_km)
+        .bind(elevation_gain_m)
+        .bind(disclaimer)
         .fetch_one(&mut *tx)
         .await?;
 

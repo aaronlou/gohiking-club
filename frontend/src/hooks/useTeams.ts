@@ -65,3 +65,75 @@ export function useLeaveTeam() {
     },
   });
 }
+
+// ── Invitations ──
+
+export function useTeamInvitations(teamId: string) {
+  return useQuery({
+    queryKey: ["teams", teamId, "invitations"],
+    queryFn: () => api.listTeamInvitations(teamId),
+    enabled: !!teamId,
+  });
+}
+
+export function useCreateTeamInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, maxUses, expiresAt }: { teamId: string; maxUses?: number; expiresAt?: string }) =>
+      api.createTeamInvitation(teamId, maxUses, expiresAt),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["teams", vars.teamId, "invitations"] });
+    },
+  });
+}
+
+export function useInvitationByCode(code: string) {
+  return useQuery({
+    queryKey: ["invitations", code],
+    queryFn: () => api.getInvitationByCode(code),
+    enabled: !!code,
+  });
+}
+
+export function useApplyJoinTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, message }: { code: string; message?: string }) => api.applyJoinTeam(code, message),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["invitations", vars.code] });
+    },
+  });
+}
+
+// ── Join Requests ──
+
+export function useJoinRequests(teamId: string) {
+  return useQuery({
+    queryKey: ["teams", teamId, "join-requests"],
+    queryFn: () => api.listJoinRequests(teamId),
+    enabled: !!teamId,
+  });
+}
+
+export function useApproveJoinRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, requestId }: { teamId: string; requestId: string }) =>
+      api.approveJoinRequest(teamId, requestId),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["teams", vars.teamId, "join-requests"] });
+      qc.invalidateQueries({ queryKey: ["teams", vars.teamId, "members"] });
+    },
+  });
+}
+
+export function useRejectJoinRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, requestId }: { teamId: string; requestId: string }) =>
+      api.rejectJoinRequest(teamId, requestId),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["teams", vars.teamId, "join-requests"] });
+    },
+  });
+}

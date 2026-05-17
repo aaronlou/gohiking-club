@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,9 +8,25 @@ import {
   CalendarDays,
   UserPlus,
   LogIn,
-  ArrowRight,
+  Link2,
+  ClipboardCopy,
+  CheckCircle,
+  XCircle,
+  Shield,
+  Clock,
 } from "lucide-react";
-import { useTeam, useTeamMembers, useTeamEvents, useJoinTeam, useLeaveTeam } from "@/hooks/useTeams";
+import {
+  useTeam,
+  useTeamMembers,
+  useTeamEvents,
+  useJoinTeam,
+  useLeaveTeam,
+  useTeamInvitations,
+  useCreateTeamInvitation,
+  useJoinRequests,
+  useApproveJoinRequest,
+  useRejectJoinRequest,
+} from "@/hooks/useTeams";
 import { useAuth } from "@/hooks/useAuth";
 import { EventCard } from "@/components/EventCard";
 
@@ -20,10 +37,19 @@ export default function TeamDetail() {
   const { data: team, isLoading } = useTeam(id!);
   const { data: members = [] } = useTeamMembers(id!);
   const { data: events = [] } = useTeamEvents(id!);
+  const { data: invitations = [] } = useTeamInvitations(id!);
+  const { data: joinRequests = [] } = useJoinRequests(id!);
   const joinMutation = useJoinTeam();
   const leaveMutation = useLeaveTeam();
+  const createInvitation = useCreateTeamInvitation();
+  const approveRequest = useApproveJoinRequest();
+  const rejectRequest = useRejectJoinRequest();
+
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"events" | "members" | "settings">("events");
 
   const isMember = user ? members.some((m) => m.user_id === user.id) : false;
+  const isAdmin = user ? members.some((m) => m.user_id === user.id && m.role === "admin") : false;
 
   const handleJoin = () => {
     if (!user) {
@@ -35,6 +61,28 @@ export default function TeamDetail() {
 
   const handleLeave = () => {
     leaveMutation.mutate(team!.id);
+  };
+
+  const handleCreateInvitation = () => {
+    if (!id) return;
+    createInvitation.mutate({ teamId: id });
+  };
+
+  const handleCopyLink = (code: string) => {
+    const url = `${window.location.origin}/teams/join/${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleApprove = (requestId: string) => {
+    if (!id) return;
+    approveRequest.mutate({ teamId: id, requestId });
+  };
+
+  const handleReject = (requestId: string) => {
+    if (!id) return;
+    rejectRequest.mutate({ teamId: id, requestId });
   };
 
   if (isLoading) {
@@ -132,56 +180,41 @@ export default function TeamDetail() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Members */}
-        <div className="lg:col-span-1">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="font-display text-lg font-semibold text-clay-900">
-              团队成员
-            </h2>
-            <span className="h-px flex-1 bg-clay-200" />
-          </div>
-          <div className="rounded-2xl border border-clay-200 bg-white shadow-sm divide-y divide-clay-100">
-            {members.map((member) => (
-              <div key={member.user_id} className="flex items-center gap-3 p-4">
-                <div className="h-9 w-9 rounded-full bg-forest-100 flex items-center justify-center text-forest-700 text-sm font-medium">
-                  {member.avatar_url ? (
-                    <img src={member.avatar_url} alt={member.username} className="h-9 w-9 rounded-full object-cover" />
-                  ) : (
-                    member.username.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-clay-900 truncate">{member.username}</p>
-                  {member.role === "admin" && (
-                    <span className="text-xs text-forest-600">管理员</span>
-                  )}
-                </div>
-              </div>
-            ))}
-            {members.length === 0 && (
-              <div className="p-6 text-center text-sm text-clay-400">
-                暂无成员
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-clay-200">
+        {[
+          { key: "events" as const, label: "团队活动" },
+          { key: "members" as const, label: "成员" },
+          ...(isAdmin ? [{ key: "settings" as const, label: "管理" }] : []),
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.key
+                ? "border-forest-500 text-forest-700"
+                : "border-transparent text-clay-500 hover:text-clay-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Events */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="font-display text-lg font-semibold text-clay-900">
-              团队活动
-            </h2>
-            <span className="h-px flex-1 bg-clay-200" />
-            <Link
-              to="/events/new"
-              className="text-sm font-medium text-forest-600 hover:text-forest-700 transition-colors inline-flex items-center gap-1"
-            >
-              发起活动
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+      {/* Events Tab */}
+      {activeTab === "events" && (
+        <div>
+          {isMember && (
+            <div className="mb-4 flex justify-end">
+              <Link
+                to={`/events/new?team_id=${team.id}`}
+                className="btn-primary inline-flex items-center gap-1.5 text-sm"
+              >
+                <CalendarDays className="h-4 w-4" />
+                发起活动
+              </Link>
+            </div>
+          )}
 
           {events.length === 0 ? (
             <div className="rounded-2xl border border-clay-200 bg-white p-8 text-center">
@@ -196,7 +229,155 @@ export default function TeamDetail() {
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Members Tab */}
+      {activeTab === "members" && (
+        <div className="rounded-2xl border border-clay-200 bg-white shadow-sm divide-y divide-clay-100">
+          {members.map((member) => (
+            <div key={member.user_id} className="flex items-center gap-3 p-4">
+              <div className="h-9 w-9 rounded-full bg-forest-100 flex items-center justify-center text-forest-700 text-sm font-medium">
+                {member.avatar_url ? (
+                  <img src={member.avatar_url} alt={member.username} className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  member.username.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-clay-900 truncate">{member.username}</p>
+                {member.role === "admin" && (
+                  <span className="text-xs text-forest-600">管理员</span>
+                )}
+              </div>
+            </div>
+          ))}
+          {members.length === 0 && (
+            <div className="p-6 text-center text-sm text-clay-400">暂无成员</div>
+          )}
+        </div>
+      )}
+
+      {/* Settings Tab (Admin only) */}
+      {activeTab === "settings" && isAdmin && (
+        <div className="space-y-8">
+          {/* Invitations */}
+          <div className="rounded-2xl border border-clay-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-semibold text-clay-900 flex items-center gap-2">
+                <Link2 className="h-5 w-5 text-forest-600" />
+                邀请链接
+              </h3>
+              <button
+                onClick={handleCreateInvitation}
+                disabled={createInvitation.isPending}
+                className="btn-primary text-sm"
+              >
+                {createInvitation.isPending ? "生成中..." : "生成新链接"}
+              </button>
+            </div>
+
+            {invitations.length === 0 ? (
+              <p className="text-sm text-clay-400">还没有邀请链接</p>
+            ) : (
+              <div className="space-y-3">
+                {invitations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-clay-100 bg-cream-50 p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <code className="text-xs text-clay-600 truncate block">{inv.code}</code>
+                      <div className="flex gap-3 mt-1 text-xs text-clay-400">
+                        <span>已用 {inv.used_count}{inv.max_uses ? ` / ${inv.max_uses}` : ""}</span>
+                        {inv.expires_at && (
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" />
+                            {new Date(inv.expires_at).toLocaleDateString("zh-CN")} 过期
+                          </span>
+                        )}
+                        <span className={inv.status === "active" ? "text-forest-600" : "text-clay-400"}>
+                          {inv.status === "active" ? "有效" : "已失效"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCopyLink(inv.code)}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-forest-700 bg-forest-50 hover:bg-forest-100 transition-colors"
+                    >
+                      {copiedCode === inv.code ? (
+                        <>
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardCopy className="h-3.5 w-3.5" />
+                          复制链接
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Join Requests */}
+          <div className="rounded-2xl border border-clay-200 bg-white p-6 shadow-sm">
+            <h3 className="font-display text-lg font-semibold text-clay-900 flex items-center gap-2 mb-4">
+              <Shield className="h-5 w-5 text-forest-600" />
+              待审批加入申请
+            </h3>
+
+            {joinRequests.length === 0 ? (
+              <p className="text-sm text-clay-400">暂时没有待审批的申请</p>
+            ) : (
+              <div className="space-y-3">
+                {joinRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-clay-100 bg-cream-50 p-4"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="h-9 w-9 rounded-full bg-forest-100 flex items-center justify-center text-forest-700 text-sm font-medium shrink-0">
+                        {req.avatar_url ? (
+                          <img src={req.avatar_url} alt={req.username} className="h-9 w-9 rounded-full object-cover" />
+                        ) : (
+                          req.username.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-clay-900">{req.username}</p>
+                        {req.message && (
+                          <p className="text-xs text-clay-500 truncate">{req.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => handleApprove(req.id)}
+                        disabled={approveRequest.isPending}
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white bg-forest-600 hover:bg-forest-700 transition-colors"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        通过
+                      </button>
+                      <button
+                        onClick={() => handleReject(req.id)}
+                        disabled={rejectRequest.isPending}
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-clay-700 bg-clay-100 hover:bg-clay-200 transition-colors"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        拒绝
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

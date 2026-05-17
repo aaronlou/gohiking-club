@@ -12,6 +12,10 @@ import {
   MessageSquare,
   Star,
   Send,
+  TrendingUp,
+  Mountain,
+  FileText,
+  Lock,
 } from "lucide-react";
 import { useEvent, useEventPhotos, useJoinEvent, useEventReviews, useCreateEventReview } from "@/hooks/useEvents";
 import { useAuth } from "@/hooks/useAuth";
@@ -132,6 +136,18 @@ export default function EventDetail() {
                 {event.location}
               </span>
             )}
+            {event.distance_km && (
+              <span className="inline-flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4" />
+                {event.distance_km} km
+              </span>
+            )}
+            {event.elevation_gain_m && (
+              <span className="inline-flex items-center gap-1.5">
+                <Mountain className="h-4 w-4" />
+                爬升 {event.elevation_gain_m} m
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5">
               <Users className="h-4 w-4" />
               {event.member_count} 人参与
@@ -153,21 +169,28 @@ export default function EventDetail() {
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={handleJoin}
-              className="btn-primary"
-              disabled={joinMutation.isPending}
-            >
-              {user ? (
-                <UserPlus className="h-4 w-4" />
-              ) : (
-                <LogIn className="h-4 w-4" />
-              )}
-              {user
-                ? joinMutation.isPending ? "加入中..." : "加入活动"
-                : "登录后加入"
-              }
-            </button>
+            {event.team_id && !event.is_team_member ? (
+              <div className="inline-flex items-center gap-2 rounded-xl bg-clay-100 px-4 py-2.5 text-sm text-clay-500">
+                <Lock className="h-4 w-4" />
+                仅团队成员可报名
+              </div>
+            ) : (
+              <button
+                onClick={handleJoin}
+                className="btn-primary"
+                disabled={joinMutation.isPending}
+              >
+                {user ? (
+                  <UserPlus className="h-4 w-4" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
+                {user
+                  ? joinMutation.isPending ? "加入中..." : "加入活动"
+                  : "登录后加入"
+                }
+              </button>
+            )}
             <Link to={`/upload?event_id=${event.id}`} className="btn-secondary">
               <Camera className="h-4 w-4" />
               上传照片到本活动
@@ -175,6 +198,17 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      {/* Disclaimer */}
+      {event.disclaimer && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-amber-700" />
+            <h3 className="text-sm font-semibold text-amber-800">免责声明</h3>
+          </div>
+          <p className="text-sm text-amber-700 leading-relaxed whitespace-pre-line">{event.disclaimer}</p>
+        </div>
+      )}
 
       {/* Photos section */}
       <div className="flex items-center gap-3 mb-5">

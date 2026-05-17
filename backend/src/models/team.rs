@@ -12,6 +12,7 @@ pub struct Team {
     pub cover_url: Option<String>,
     pub created_by: Uuid,
     pub status: String,
+    pub default_disclaimer: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -37,6 +38,7 @@ pub struct UpdateTeamRequest {
     pub description: Option<String>,
     pub logo_url: Option<String>,
     pub cover_url: Option<String>,
+    pub default_disclaimer: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -101,6 +103,104 @@ impl From<(Team, i64, i64)> for TeamResponse {
             created_at: t.created_at,
         }
     }
+}
+
+// ── Team Invitation ──
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct TeamInvitation {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub code: String,
+    pub created_by: Uuid,
+    pub max_uses: Option<i32>,
+    pub used_count: i32,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TeamInvitationResponse {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub code: String,
+    pub max_uses: Option<i32>,
+    pub used_count: i32,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<TeamInvitation> for TeamInvitationResponse {
+    fn from(inv: TeamInvitation) -> Self {
+        Self {
+            id: inv.id,
+            team_id: inv.team_id,
+            code: inv.code,
+            max_uses: inv.max_uses,
+            used_count: inv.used_count,
+            expires_at: inv.expires_at,
+            status: inv.status,
+            created_at: inv.created_at,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateInvitationRequest {
+    pub max_uses: Option<i32>,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+// ── Team Join Request ──
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct TeamJoinRequest {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub user_id: Uuid,
+    pub invitation_code: Option<String>,
+    pub message: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct JoinRequestRow {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub user_id: Uuid,
+    pub invitation_code: Option<String>,
+    pub message: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub username: String,
+    pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TeamJoinRequestResponse {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub user_id: Uuid,
+    pub username: String,
+    pub avatar_url: Option<String>,
+    pub invitation_code: Option<String>,
+    pub message: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApplyJoinRequest {
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApproveJoinRequest {
+    pub request_id: Uuid,
 }
 
 #[derive(Debug, Serialize)]

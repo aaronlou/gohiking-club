@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::auth_extractor::AuthenticatedUser;
 use crate::models::event::{CreateEventRequest, Event, EventResponse};
+use crate::repositories::team_repository::TeamRepository;
 use crate::models::photo::{Photo, PhotoResponse};
 use crate::repositories::event_repository::EventRepository;
 use crate::AppState;
@@ -28,6 +29,18 @@ pub async fn create(
     Event::validate_title(&req.title)
         .map_err(|e| (StatusCode::BAD_REQUEST, e.into()))?;
 
+    // If team_id is provided, verify the user is an admin of that team
+    if let Some(team_id) = req.team_id {
+        let team_repo = TeamRepository::new(&state.pool);
+        let is_admin = team_repo
+            .is_admin(team_id, auth_user.id)
+            .await
+            .map_err(internal_error)?;
+        if !is_admin {
+            return Err((StatusCode::FORBIDDEN, "Only team admin can create team events".into()));
+        }
+    }
+
     let repo = EventRepository::new(&state.pool);
     let event = repo
         .create_with_creator(
@@ -37,14 +50,27 @@ pub async fn create(
             req.date.as_ref(),
             auth_user.id,
             req.team_id,
+            req.distance_km,
+            req.elevation_gain_m,
+            req.disclaimer.as_deref(),
         )
         .await
         .map_err(internal_error)?;
 
-    Ok(Json(EventResponse::from((event, 1, 0, 0))))
+    let members = repo.get_member_count(event.id).await.unwrap_or(0);
+    let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
+    let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
+    let is_team_member = if let Some(team_id) = event.team_id {
+        TeamRepository::new(&state.pool).is_member(team_id, auth_user.id).await.unwrap_or(false)
+    } else {
+        false
+    };
+
+    Ok(Json(EventResponse::from_event(event, members, photos, reviews, is_team_member)))
 }
 
 pub async fn list(
+    auth_user: AuthenticatedUser,
     State(state): State<AppState>,
     Query(filter): Query<EventFilter>,
 ) -> Result<Json<Vec<EventResponse>>, (StatusCode, String)> {
@@ -62,13 +88,19 @@ pub async fn list(
         let members = repo.get_member_count(event.id).await.unwrap_or(0);
         let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
         let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
-        result.push(EventResponse::from((event, members, photos, reviews)));
+        let is_team_member = if let Some(team_id) = event.team_id {
+            TeamRepository::new(&state.pool).is_member(team_id, auth_user.id).await.unwrap_or(false)
+        } else {
+            false
+        };
+        result.push(EventResponse::from_event(event, members, photos, reviews, is_team_member));
     }
 
     Ok(Json(result))
 }
 
 pub async fn get(
+    auth_user: Option<AuthenticatedUser>,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<EventResponse>, (StatusCode, String)> {
@@ -83,7 +115,18 @@ pub async fn get(
     let members = repo.get_member_count(event.id).await.unwrap_or(0);
     let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
     let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
-    Ok(Json(EventResponse::from((event, members, photos, reviews))))
+
+    let is_team_member = if let Some(team_id) = event.team_id {
+        if let Some(ref user) = auth_user {
+            TeamRepository::new(&state.pool).is_member(team_id, user.id).await.unwrap_or(false)
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    Ok(Json(EventResponse::from_event(event, members, photos, reviews, is_team_member)))
 }
 
 pub async fn join(
@@ -92,6 +135,26 @@ pub async fn join(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let repo = EventRepository::new(&state.pool);
+
+    let event = repo
+        .find_by_id(id)
+        .await
+        .map_err(internal_error)?
+        .ok_or((StatusCode::NOT_FOUND, "Event not found".to_string()))?;
+
+    // If event belongs to a team, user must be a team member
+    if let Some(team_id) = event.team_id {
+        let team_repo = TeamRepository::new(&state.pool);
+        let is_team_member = team_repo
+            .is_member(team_id, auth_user.id)
+            .await
+            .map_err(internal_error)?;
+
+        if !is_team_member {
+            return Err((StatusCode::FORBIDDEN, "Only team members can join this event".into()));
+        }
+    }
+
     let added = repo
         .add_member(id, auth_user.id, "member")
         .await

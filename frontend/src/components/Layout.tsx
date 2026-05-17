@@ -16,6 +16,9 @@ export function Layout() {
           <p className="mt-2 text-sm text-clay-400">
             &copy; {new Date().getFullYear()} — 发现徒步之美
           </p>
+          <p className="mt-2 text-xs text-clay-500">
+            浙ICP备2024126456号-4
+          </p>
         </div>
       </footer>
     </div>

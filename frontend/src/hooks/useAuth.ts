@@ -24,7 +24,6 @@ export const useAuth = create<AuthState>()(
       init: async () => {
         const token = get().token;
         if (!token) {
-          localStorage.removeItem("auth-token");
           set({ initialized: true });
           return;
         }
@@ -32,7 +31,6 @@ export const useAuth = create<AuthState>()(
           const user = await api.getMe();
           set({ user, initialized: true });
         } catch {
-          localStorage.removeItem("auth-token");
           set({ user: null, token: null, initialized: true });
         }
       },
@@ -61,6 +59,14 @@ export const useAuth = create<AuthState>()(
     {
       name: "gohiking-auth",
       partialize: (state) => ({ token: state.token }),
+      onRehydrateStorage: () => {
+        return (_state, error) => {
+          if (error) {
+            console.error("Auth rehydration failed:", error);
+          }
+          useAuth.getState().init();
+        };
+      },
     }
   )
 );

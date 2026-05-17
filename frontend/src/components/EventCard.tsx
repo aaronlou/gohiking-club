@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Users, Camera, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Users, Camera, ArrowRight, TrendingUp } from "lucide-react";
 import type { Event } from "@/types";
 
 interface EventCardProps {
@@ -46,6 +46,12 @@ export function EventCard({ event }: EventCardProps) {
             <span className="inline-flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" />
               {event.location}
+            </span>
+          )}
+          {event.distance_km && (
+            <span className="inline-flex items-center gap-1">
+              <TrendingUp className="h-3.5 w-3.5" />
+              {event.distance_km}km
             </span>
           )}
           <span className="inline-flex items-center gap-1">

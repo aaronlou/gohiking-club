@@ -118,6 +118,14 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         .route("/api/teams/:id/leave", post(api::teams::leave))
         .route("/api/teams/:id/members", get(api::teams::get_members))
         .route("/api/teams/:id/events", get(api::teams::get_events))
+        // Team invitations
+        .route("/api/teams/:id/invitations", post(api::teams::create_invitation).get(api::teams::list_invitations))
+        .route("/api/teams/invitations/:code", get(api::teams::get_invitation_by_code))
+        .route("/api/teams/invitations/:code/apply", post(api::teams::apply_join))
+        // Team join requests
+        .route("/api/teams/:id/join-requests", get(api::teams::list_join_requests))
+        .route("/api/teams/:id/join-requests/approve", post(api::teams::approve_join_request))
+        .route("/api/teams/:id/join-requests/reject", post(api::teams::reject_join_request))
         // Event Reviews
         .route("/api/events/:id/reviews", post(api::event_reviews::create).get(api::event_reviews::list))
         .route("/api/events/:id/reviews/:review_id", post(api::event_reviews::delete))
