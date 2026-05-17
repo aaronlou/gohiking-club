@@ -70,7 +70,7 @@ pub async fn create(
 }
 
 pub async fn list(
-    auth_user: AuthenticatedUser,
+    auth_user: Option<AuthenticatedUser>,
     State(state): State<AppState>,
     Query(filter): Query<EventFilter>,
 ) -> Result<Json<Vec<EventResponse>>, (StatusCode, String)> {
@@ -88,8 +88,8 @@ pub async fn list(
         let members = repo.get_member_count(event.id).await.unwrap_or(0);
         let photos = repo.get_photo_count(event.id).await.unwrap_or(0);
         let reviews = repo.get_review_count(event.id).await.unwrap_or(0);
-        let is_team_member = if let Some(team_id) = event.team_id {
-            TeamRepository::new(&state.pool).is_member(team_id, auth_user.id).await.unwrap_or(false)
+        let is_team_member = if let (Some(team_id), Some(ref user)) = (event.team_id, &auth_user) {
+            TeamRepository::new(&state.pool).is_member(team_id, user.id).await.unwrap_or(false)
         } else {
             false
         };

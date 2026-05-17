@@ -59,8 +59,8 @@ export function useEventReviews(eventId: string) {
 export function useCreateEventReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ eventId, content, rating }: { eventId: string; content: string; rating?: number }) =>
-      api.createEventReview(eventId, content, rating),
+    mutationFn: ({ eventId, content }: { eventId: string; content: string }) =>
+      api.createEventReview(eventId, content),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["events", vars.eventId, "reviews"] });
       qc.invalidateQueries({ queryKey: ["events", vars.eventId] });

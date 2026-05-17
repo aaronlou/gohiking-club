@@ -10,7 +10,6 @@ import {
   UserPlus,
   LogIn,
   MessageSquare,
-  Star,
   Send,
   TrendingUp,
   Mountain,
@@ -32,7 +31,6 @@ export default function EventDetail() {
   const reviewMutation = useCreateEventReview();
 
   const [reviewContent, setReviewContent] = useState("");
-  const [reviewRating, setReviewRating] = useState(5);
 
   const handleJoin = () => {
     if (!user) {
@@ -48,11 +46,10 @@ export default function EventDetail() {
     e.preventDefault();
     if (!reviewContent.trim() || !user) return;
     reviewMutation.mutate(
-      { eventId: event!.id, content: reviewContent, rating: reviewRating },
+      { eventId: event!.id, content: reviewContent },
       {
         onSuccess: () => {
           setReviewContent("");
-          setReviewRating(5);
         },
       }
     );
@@ -231,21 +228,6 @@ export default function EventDetail() {
         {/* Write review */}
         {user && (
           <form onSubmit={handleSubmitReview} className="mb-6 rounded-2xl border border-clay-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-1 mb-3">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setReviewRating(n)}
-                  className="p-0.5 transition-colors"
-                >
-                  <Star
-                    className={`h-5 w-5 ${n <= reviewRating ? "fill-amber-400 text-amber-400" : "text-clay-300"}`}
-                  />
-                </button>
-              ))}
-              <span className="ml-2 text-sm text-clay-500">{reviewRating} 星</span>
-            </div>
             <textarea
               value={reviewContent}
               onChange={(e) => setReviewContent(e.target.value)}
@@ -298,13 +280,7 @@ export default function EventDetail() {
                     <div>
                       <p className="text-sm font-medium text-clay-900">{review.username}</p>
                       <div className="flex items-center gap-1">
-                        {review.rating && Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${i < review.rating! ? "fill-amber-400 text-amber-400" : "text-clay-200"}`}
-                          />
-                        ))}
-                        <span className="ml-1 text-xs text-clay-400">
+                        <span className="text-xs text-clay-400">
                           {new Date(review.created_at).toLocaleDateString("zh-CN")}
                         </span>
                       </div>

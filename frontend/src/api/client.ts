@@ -39,7 +39,6 @@ export async function uploadPhoto(
   if (event_id) form.append("event_id", event_id);
 
   const { data } = await api.post<Photo>("/photos", form, {
-    headers: { "Content-Type": "multipart/form-data" },
     onUploadProgress(e) {
       if (e.total && onProgress) {
         onProgress(Math.round((e.loaded * 100) / e.total));
@@ -137,11 +136,9 @@ export async function getTeamEvents(id: string): Promise<Event[]> {
 export async function createEventReview(
   eventId: string,
   content: string,
-  rating?: number,
 ): Promise<EventReview> {
   const { data } = await api.post<EventReview>(`/events/${eventId}/reviews`, {
     content,
-    rating,
   });
   return data;
 }
