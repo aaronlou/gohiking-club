@@ -39,6 +39,9 @@ export async function uploadPhoto(
   if (event_id) form.append("event_id", event_id);
 
   const { data } = await api.post<Photo>("/photos", form, {
+    headers: {
+      "Content-Type": undefined, // Let browser set multipart/form-data with boundary
+    },
     onUploadProgress(e) {
       if (e.total && onProgress) {
         onProgress(Math.round((e.loaded * 100) / e.total));
