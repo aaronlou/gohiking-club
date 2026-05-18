@@ -8,18 +8,31 @@ import type {
 
 const api = axios.create({
   baseURL: "/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-// ── Auth interceptor ──
+// ── Request interceptor ──
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("auth-token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Auto-set Content-Type for plain JSON payloads so the backend Json extractor works.
+  // For FormData / Blob / ArrayBuffer we leave it unset so the browser sets the
+  // correct Content-Type (e.g. multipart/form-data with boundary).
+  if (
+    config.data &&
+    typeof config.data === "object" &&
+    !(config.data instanceof FormData) &&
+    !(config.data instanceof Blob) &&
+    !(config.data instanceof ArrayBuffer) &&
+    !(config.data instanceof URLSearchParams) &&
+    !config.headers?.["Content-Type"]
+  ) {
+    config.headers["Content-Type"] = "application/json";
+  }
+
   return config;
 });
 
@@ -39,9 +52,6 @@ export async function uploadPhoto(
   if (event_id) form.append("event_id", event_id);
 
   const { data } = await api.post<Photo>("/photos", form, {
-    headers: {
-      "Content-Type": undefined, // Let browser set multipart/form-data with boundary
-    },
     onUploadProgress(e) {
       if (e.total && onProgress) {
         onProgress(Math.round((e.loaded * 100) / e.total));
