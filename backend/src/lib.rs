@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
+    extract::DefaultBodyLimit,
     routing::{get, post, put},
     Router,
 };
@@ -102,7 +103,7 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         .route("/api/auth/login", post(api::auth::login))
         .route("/api/auth/me", get(api::auth::me))
         // Photos
-        .route("/api/photos", post(api::photos::upload).get(api::photos::list))
+        .route("/api/photos", post(api::photos::upload).layer(DefaultBodyLimit::max(20 * 1024 * 1024)).get(api::photos::list))
         .route("/api/photos/:id", get(api::photos::get).delete(api::photos::delete))
         // Users
         .route("/api/users/:id", get(api::users::get_profile))
