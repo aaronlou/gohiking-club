@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod api;
 pub mod filters;
 pub mod models;
@@ -20,6 +21,11 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
+use crate::agent::agent_service::AgentService;
+use crate::agent::skills::SkillLoader;
+use crate::agent::tools::ToolRegistry;
+use crate::agent::LlmProvider;
+use crate::agent::LlmRegistry;
 use crate::ai::registry::ScorerRegistry;
 use crate::ai::{claude::ClaudeScorer, gemini::GeminiScorer, ollama::OllamaScorer, openai::OpenAIScorer, PhotoScorer};
 use crate::config::AppConfig;
@@ -37,14 +43,21 @@ pub struct AppState {
     pub pool: PgPool,
     pub photo_service: Arc<PhotoService>,
     pub auth_service: Arc<AuthService>,
+    pub agent_service: Arc<AgentService>,
 }
 
 impl AppState {
-    fn new(pool: PgPool, photo_service: PhotoService, auth_service: AuthService) -> Self {
+    fn new(
+        pool: PgPool,
+        photo_service: PhotoService,
+        auth_service: AuthService,
+        agent_service: AgentService,
+    ) -> Self {
         Self {
             pool,
             photo_service: Arc::new(photo_service),
             auth_service: Arc::new(auth_service),
+            agent_service: Arc::new(agent_service),
         }
     }
 }
@@ -68,7 +81,6 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
             Arc::new(LocalStorage::new(&local.base_dir, &local.public_url_prefix)?)
         }
         _ => {
-            // Default to S3 / MinIO
             let s3 = config.storage.s3.clone().expect("S3 config required when backend = \"s3\"");
             Arc::new(
                 S3Storage::new(
@@ -93,7 +105,34 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
 
     let photo_service = PhotoService::new(pool.clone(), storage, scorer_service);
     let auth_service = AuthService::new(&config.auth);
-    let state = AppState::new(pool, photo_service, auth_service);
+
+    // Build Agent
+    let llm_providers = build_llm_providers(&config);
+    let llm_registry = LlmRegistry::new(llm_providers, &config.agent.active);
+
+    let mut tool_registry = ToolRegistry::new();
+    tool_registry.register(Box::new(
+        crate::agent::tools::search_photos::SearchPhotosTool::new(pool.clone()),
+    ));
+    tool_registry.register(Box::new(
+        crate::agent::tools::list_events::ListEventsTool::new(pool.clone()),
+    ));
+    tool_registry.register(Box::new(
+        crate::agent::tools::get_user_profile::GetUserProfileTool::new(pool.clone()),
+    ));
+
+    let skill_loader = SkillLoader::new(&config.agent.skills)?;
+
+    let agent_service = AgentService::new(
+        pool.clone(),
+        llm_registry,
+        tool_registry,
+        skill_loader,
+        config.agent.system_prompt.clone(),
+        config.agent.max_history_messages,
+    );
+
+    let state = AppState::new(pool, photo_service, auth_service, agent_service);
 
     let app = Router::new()
         // Static uploads (for local storage backend)
@@ -131,6 +170,12 @@ pub async fn build_app(config: AppConfig) -> anyhow::Result<Router> {
         // Event Reviews
         .route("/api/events/:id/reviews", post(api::event_reviews::create).get(api::event_reviews::list))
         .route("/api/events/:id/reviews/:review_id", post(api::event_reviews::delete))
+        // Agent
+        .route("/api/agent/chat", post(api::agent::chat))
+        .route("/api/agent/conversations", get(api::agent::list_conversations))
+        .route("/api/agent/conversations/:id", get(api::agent::get_conversation).delete(api::agent::delete_conversation))
+        .route("/api/agent/skills", get(api::agent::list_skills))
+        .route("/api/agent/skills/install", post(api::agent::install_skill))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
@@ -173,6 +218,55 @@ fn build_scorers(config: &AppConfig) -> HashMap<String, Box<dyn PhotoScorer>> {
             }
         };
         providers.insert(name.clone(), scorer);
+    }
+
+    providers
+}
+
+fn build_llm_providers(config: &AppConfig) -> HashMap<String, Arc<dyn LlmProvider>> {
+    let mut providers: HashMap<String, Arc<dyn LlmProvider>> = HashMap::new();
+
+    for (name, provider_config) in &config.agent.providers {
+        let llm: Arc<dyn LlmProvider> = match name.as_str() {
+            "claude" => {
+                let api_key = std::env::var("CLAUDE_API_KEY").unwrap_or_default();
+                Arc::new(
+                    crate::agent::claude::ClaudeLlm::new(api_key)
+                        .with_model(&provider_config.model)
+                        .with_max_tokens(provider_config.max_tokens.unwrap_or(2048)),
+                )
+            }
+            "openai" => {
+                let api_key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
+                Arc::new(
+                    crate::agent::openai::OpenAILlm::new(api_key)
+                        .with_model(&provider_config.model)
+                        .with_max_tokens(provider_config.max_tokens.unwrap_or(2048)),
+                )
+            }
+            "gemini" => {
+                let api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+                Arc::new(
+                    crate::agent::gemini::GeminiLlm::new(api_key)
+                        .with_model(&provider_config.model),
+                )
+            }
+            "ollama" => {
+                let endpoint = provider_config
+                    .endpoint
+                    .clone()
+                    .unwrap_or_else(|| "http://localhost:11434".into());
+                Arc::new(crate::agent::ollama::OllamaLlm::new(
+                    endpoint,
+                    provider_config.model.clone(),
+                ))
+            }
+            _ => {
+                tracing::warn!("Unknown LLM provider: {name}, skipping");
+                continue;
+            }
+        };
+        providers.insert(name.clone(), llm);
     }
 
     providers

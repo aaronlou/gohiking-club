@@ -3,3 +3,4 @@ pub mod photo;
 pub mod event;
 pub mod team;
 pub mod event_review;
+pub mod agent;

@@ -8,6 +8,7 @@ pub struct AppConfig {
     pub storage: StorageConfig,
     pub auth: AuthConfig,
     pub ai_scoring: AiScoringConfig,
+    pub agent: AgentConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -70,6 +71,21 @@ pub struct ProviderConfig {
     pub model: String,
     pub max_tokens: Option<u32>,
     pub endpoint: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgentConfig {
+    pub active: String,
+    pub system_prompt: String,
+    pub max_history_messages: usize,
+    pub providers: HashMap<String, ProviderConfig>,
+    pub skills: SkillsConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SkillsConfig {
+    pub workspace_dir: String,
+    pub enabled: bool,
 }
 
 impl AppConfig {

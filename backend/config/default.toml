@@ -34,7 +34,7 @@ threshold = 60.0
 concurrent_limit = 5
 
 [ai_scoring.providers.gemini]
-model = "gemini-2.0-flash"
+model = "gemini-3.1-flash-lite"
 
 [ai_scoring.providers.claude]
 model = "claude-sonnet-4-20250506"
@@ -47,3 +47,28 @@ max_tokens = 500
 [ai_scoring.providers.ollama]
 endpoint = "http://localhost:11434"
 model = "llava"
+
+[agent]
+active = "claude"
+system_prompt = "You are GoHiking.club's AI assistant. You help users with hiking events, photo sharing, team management, and outdoor activities. You have access to tools that can search photos, list events, and look up user profiles. Be friendly, concise, and helpful."
+max_history_messages = 20
+
+[agent.providers.claude]
+model = "claude-sonnet-4-20250514"
+max_tokens = 2048
+
+[agent.providers.openai]
+model = "gpt-4o"
+max_tokens = 2048
+
+[agent.providers.gemini]
+model = "gemini-2.0-flash"
+max_tokens = 2048
+
+[agent.providers.ollama]
+endpoint = "http://localhost:11434"
+model = "llama3.2"
+
+[agent.skills]
+workspace_dir = "./skills"
+enabled = true

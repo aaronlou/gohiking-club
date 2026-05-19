@@ -40,7 +40,11 @@ export function useUpload() {
           description,
           event_id,
           (p) => {
-            setState((s) => ({ ...s, progress: p }));
+            setState((s) => ({
+              ...s,
+              progress: p,
+              status: p >= 100 ? "scoring" : s.status,
+            }));
           },
         );
 
