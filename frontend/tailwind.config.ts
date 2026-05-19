@@ -57,8 +57,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Fraunces"', "Georgia", "serif"],
-        body: ['"DM Sans"', "system-ui", "sans-serif"],
+        display: ['"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'Georgia', 'serif'],
+        body: ['"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {},
       animation: {
