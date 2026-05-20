@@ -56,6 +56,7 @@ export default function TeamDetail() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"events" | "members" | "settings">("events");
   const [coverUploading, setCoverUploading] = useState(false);
+  const [coverLoaded, setCoverLoaded] = useState(false);
 
   const isMember = user ? members.some((m) => m.user_id === user.id) : false;
   const isAdmin = user ? members.some((m) => m.user_id === user.id && m.role === "admin") : false;
@@ -153,8 +154,17 @@ export default function TeamDetail() {
       {/* Team hero */}
       <div className="overflow-hidden rounded-2xl border border-clay-200 bg-white shadow-sm mb-6">
         {team.cover_url ? (
-          <div className="aspect-[3/1] overflow-hidden bg-clay-100 sm:aspect-[4/1]">
-            <img src={team.cover_url} alt={team.name} className="h-full w-full object-cover" />
+          <div className="aspect-[3/1] overflow-hidden bg-clay-100 sm:aspect-[4/1] relative">
+            {!coverLoaded && (
+              <div className="absolute inset-0 animate-pulse bg-clay-200" />
+            )}
+            <img
+              src={team.cover_url}
+              alt={team.name}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              onLoad={() => setCoverLoaded(true)}
+            />
           </div>
         ) : (
           <div className="aspect-[3/1] bg-gradient-to-br from-forest-100 via-cream-50 to-earth-100 sm:aspect-[4/1] flex items-center justify-center">
@@ -325,7 +335,18 @@ export default function TeamDetail() {
             </h3>
             <div className="relative aspect-[4/1] rounded-xl overflow-hidden bg-clay-100 mb-3">
               {team.cover_url ? (
-                <img src={team.cover_url} alt="cover" className="h-full w-full object-cover" />
+                <>
+                  {!coverLoaded && (
+                    <div className="absolute inset-0 animate-pulse bg-clay-200" />
+                  )}
+                  <img
+                    src={team.cover_url}
+                    alt="cover"
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onLoad={() => setCoverLoaded(true)}
+                  />
+                </>
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-clay-300 text-sm">
                   暂无背景图

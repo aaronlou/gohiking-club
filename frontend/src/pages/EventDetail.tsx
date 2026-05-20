@@ -31,6 +31,7 @@ export default function EventDetail() {
   const reviewMutation = useCreateEventReview();
 
   const [reviewContent, setReviewContent] = useState("");
+  const [coverLoaded, setCoverLoaded] = useState(false);
 
   const handleJoin = () => {
     if (!user) {
@@ -104,8 +105,17 @@ export default function EventDetail() {
       {/* Event hero */}
       <div className="overflow-hidden rounded-2xl border border-clay-200 bg-white shadow-sm mb-6">
         {event.cover_url ? (
-          <div className="aspect-[3/1] overflow-hidden bg-clay-100 sm:aspect-[4/1]">
-            <img src={event.cover_url} alt={event.title} className="h-full w-full object-cover" />
+          <div className="aspect-[3/1] overflow-hidden bg-clay-100 sm:aspect-[4/1] relative">
+            {!coverLoaded && (
+              <div className="absolute inset-0 animate-pulse bg-clay-200" />
+            )}
+            <img
+              src={event.cover_url}
+              alt={event.title}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              onLoad={() => setCoverLoaded(true)}
+            />
           </div>
         ) : (
           <div className="aspect-[3/1] bg-gradient-to-br from-forest-100 via-cream-50 to-earth-100 sm:aspect-[4/1] flex items-center justify-center">
