@@ -83,6 +83,9 @@ pub async fn login(
         .map_err(internal_error)?;
 
     let photo_count = user_repo.get_photo_count(user.id).await.unwrap_or(0);
+    let team_count = user_repo.get_team_count(user.id).await.unwrap_or(0);
+    let event_count = user_repo.get_event_count(user.id).await.unwrap_or(0);
+    let review_count = user_repo.get_review_count(user.id).await.unwrap_or(0);
 
     Ok(Json(AuthResponse {
         token,
@@ -93,6 +96,9 @@ pub async fn login(
             avatar_url: user.avatar_url,
             bio: user.bio,
             photo_count,
+            team_count,
+            event_count,
+            review_count,
             created_at: user.created_at,
         },
     }))
@@ -112,6 +118,9 @@ pub async fn me(
         .ok_or_else(|| (StatusCode::NOT_FOUND, "用户不存在".into()))?;
 
     let photo_count = user_repo.get_photo_count(user.id).await.unwrap_or(0);
+    let team_count = user_repo.get_team_count(user.id).await.unwrap_or(0);
+    let event_count = user_repo.get_event_count(user.id).await.unwrap_or(0);
+    let review_count = user_repo.get_review_count(user.id).await.unwrap_or(0);
 
     Ok(Json(UserResponse {
         id: user.id,
@@ -120,6 +129,9 @@ pub async fn me(
         avatar_url: user.avatar_url,
         bio: user.bio,
         photo_count,
+        team_count,
+        event_count,
+        review_count,
         created_at: user.created_at,
     }))
 }

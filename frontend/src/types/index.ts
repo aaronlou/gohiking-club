@@ -34,6 +34,9 @@ export interface User {
   avatar_url: string | null;
   bio: string | null;
   photo_count: number;
+  team_count: number;
+  event_count: number;
+  review_count: number;
   created_at: string;
 }
 

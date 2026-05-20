@@ -66,4 +66,34 @@ impl<'a> UserRepository<'a> {
         .await?;
         Ok(count.0)
     }
+
+    pub async fn get_team_count(&self, user_id: Uuid) -> anyhow::Result<i64> {
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM team_members WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(count.0)
+    }
+
+    pub async fn get_event_count(&self, user_id: Uuid) -> anyhow::Result<i64> {
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM event_members WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(count.0)
+    }
+
+    pub async fn get_review_count(&self, user_id: Uuid) -> anyhow::Result<i64> {
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM event_reviews WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(self.pool)
+        .await?;
+        Ok(count.0)
+    }
 }

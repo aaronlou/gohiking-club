@@ -40,6 +40,9 @@ pub struct UserResponse {
     pub avatar_url: Option<String>,
     pub bio: Option<String>,
     pub photo_count: i64,
+    pub team_count: i64,
+    pub event_count: i64,
+    pub review_count: i64,
     pub created_at: DateTime<Utc>,
 }
 
@@ -52,6 +55,9 @@ impl From<User> for UserResponse {
             avatar_url: user.avatar_url,
             bio: user.bio,
             photo_count: 0,
+            team_count: 0,
+            event_count: 0,
+            review_count: 0,
             created_at: user.created_at,
         }
     }

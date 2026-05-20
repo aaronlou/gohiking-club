@@ -177,6 +177,9 @@ impl PhotoService {
             avatar_url: user.avatar_url,
             bio: user.bio,
             photo_count: 0,
+            team_count: 0,
+            event_count: 0,
+            review_count: 0,
             created_at: user.created_at,
         })
     }
@@ -202,6 +205,9 @@ impl PhotoService {
             avatar_url: user.avatar_url,
             bio: user.bio,
             photo_count: photo_count.0,
+            team_count: 0,
+            event_count: 0,
+            review_count: 0,
             created_at: user.created_at,
         })
     }

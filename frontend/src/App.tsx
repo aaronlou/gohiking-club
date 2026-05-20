@@ -15,6 +15,7 @@ import TeamJoin from "@/pages/TeamJoin";
 import Gallery from "@/pages/Gallery";
 import UploadPage from "@/pages/Upload";
 import Profile from "@/pages/Profile";
+import Memories from "@/pages/Memories";
 import Login from "@/pages/Login";
 
 const queryClient = new QueryClient({
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/teams/:id" element={<TeamDetail />} />
         <Route path="/teams/join/:code" element={<TeamJoin />} />
         <Route path="/gallery" element={<Gallery />} />
+        <Route path="/memories" element={<Memories />} />
         <Route path="/login" element={<Login />} />
 
         {/* Protected routes */}
